@@ -24,6 +24,15 @@
         <a href="#" class="nav-item" data-section="welcome"><span>👋</span> Bienvenida</a>
         <a href="#" class="nav-item" data-section="invites"><span>📨</span> Invitaciones</a>
         <a href="#" class="nav-item" data-section="send"><span>✉️</span> Enviar mensaje</a>
+        <a href="#" class="nav-item" data-section="builder"><span>🧰</span> Crear cosas</a>
+        <a href="#" class="nav-item" data-section="setup"><span>⚡</span> Setup rápido</a>
+        <a href="#" class="nav-item" data-section="moderation"><span>🛡️</span> Moderación</a>
+        <a href="#" class="nav-item" data-section="tools"><span>⚙️</span> Herramientas</a>
+        <a href="#" class="nav-item" data-section="apps"><span>🧩</span> Apps y automatizaciones</a>
+        <a href="#" class="nav-item" data-section="members"><span>👥</span> Miembros</a>
+        <a href="#" class="nav-item" data-section="quick"><span>⚡</span> Acciones rápidas</a>
+        <a href="#" class="nav-item" data-section="server"><span>🏰</span> Servidor</a>
+
       </nav>
       <div class="sidebar-footer">
         <div class="user-chip" id="user-chip">
@@ -203,6 +212,189 @@
           </div>
         </div>
       </section>
+
+      <section class="section-panel" id="section-builder">
+        <p class="section-desc">Crea canales y roles directamente desde el panel, sin tener que abrir Discord.</p>
+        <div class="cards-row">
+          <div class="info-box">
+            <h3>📺 Crear canal</h3>
+            <div class="form-group"><label>Nombre</label><input id="new-channel-name" class="text-input" placeholder="💬・general" /></div>
+            <div class="form-group"><label>Tipo</label><select id="new-channel-type"><option value="0">Canal de texto</option><option value="5">Anuncios</option><option value="4">Categoría</option></select></div>
+            <div class="form-group"><label>Categoría</label><select id="new-channel-parent"><option value="">Sin categoría</option></select></div>
+            <div class="form-group"><label>Tema (opcional)</label><input id="new-channel-topic" class="text-input" placeholder="Tema del canal" /></div>
+            <button class="btn btn-primary" id="btn-create-channel">➕ Crear canal</button>
+          </div>
+          <div class="info-box">
+            <h3>🎭 Crear rol</h3>
+            <div class="form-group"><label>Nombre</label><input id="new-role-name" class="text-input" placeholder="VIP" /></div>
+            <div class="form-group"><label>Color</label><input id="new-role-color" type="color" value="#9b59b6" style="width:100%;height:40px;border:none;background:transparent" /></div>
+            <div class="form-group"><label><input id="new-role-hoist" type="checkbox" /> Mostrar separado</label></div>
+            <div class="form-group"><label><input id="new-role-mentionable" type="checkbox" /> Mencionable</label></div>
+            <button class="btn btn-primary" id="btn-create-role">➕ Crear rol</button>
+          </div>
+        </div>
+        <div class="info-box" style="margin-top:1rem">
+          <h3>📦 Acciones rápidas</h3>
+          <p>Después de crear elementos, pulsa actualizar en Canales o Roles para verlos en el panel.</p>
+          <button class="btn btn-ghost" id="btn-refresh-data">🔄 Actualizar canales y roles</button>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-setup">
+        <p class="section-desc">Constructor del servidor. Crea estructuras completas como un panel tipo Koya/MEE6 y evita duplicados automáticamente.</p>
+        <div class="cards-row">
+          <div class="info-box">
+            <h3>⚡ Plantilla</h3>
+            <label>Tipo de servidor</label>
+            <select id="setup-template" class="text-input">
+              <option value="community">💬 Comunidad</option>
+              <option value="gaming">🎮 Gaming</option>
+              <option value="support">🎫 Soporte</option>
+            </select>
+            <p class="hint">Crea categorías, canales y roles. Si algo ya existe, lo reutiliza.</p>
+            <button class="btn btn-primary" id="btn-setup-pack">⚡ Crear estructura</button>
+          </div>
+          <div class="info-box">
+            <h3>💾 Persistencia</h3>
+            <p>La configuración se guarda en el servidor y además en una copia local del navegador para que una recarga no borre tus selecciones.</p>
+            <button class="btn btn-ghost" id="btn-force-save">💾 Guardar ahora</button>
+            <button class="btn btn-ghost" id="btn-clear-local" style="margin-top:.5rem">🧹 Borrar copia local</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-moderation">
+        <p class="section-desc">Acciones individuales de moderación para administradores. Se aplican directamente en Discord.</p>
+        <div class="form-stack" style="max-width:520px">
+          <div class="form-group"><label>ID del usuario</label><input id="mod-user" class="text-input" placeholder="123456789012345678" /></div>
+          <div class="form-group"><label>Razón (opcional)</label><input id="mod-reason" class="text-input" placeholder="Incumplimiento de las reglas" /></div>
+          <div class="form-group"><label>Minutos de timeout</label><input id="mod-minutes" type="number" class="text-input" min="1" max="40320" value="10" /></div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+            <button class="btn btn-ghost" data-mod="timeout">⏳ Timeout</button>
+            <button class="btn btn-ghost" data-mod="untimeout">🔓 Quitar timeout</button>
+            <button class="btn btn-ghost" data-mod="kick">👢 Expulsar</button>
+            <button class="btn btn-ghost" data-mod="ban">🔨 Banear</button>
+            <button class="btn btn-ghost" data-mod="unban">♻️ Desbanear</button>
+          </div>
+          <p class="hint">Confirma la acción antes de ejecutarla. Necesita los permisos correspondientes del bot.</p>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-apps">
+        <p class="section-desc">Centro de funciones de JuliDev. Configura automatizaciones y módulos por servidor; los cambios se guardan automáticamente.</p>
+        <div class="cards-row">
+          <div class="info-box app-card"><h3>🛡️ AutoMod</h3><p>Filtros básicos contra spam, links y palabras bloqueadas.</p>
+            <label><input id="am-enabled" type="checkbox"> Activar AutoMod</label>
+            <label style="margin-top:.6rem;display:block">Anti-spam</label><select id="am-spam"><option value="off">Desactivado</option><option value="low">Bajo</option><option value="medium">Medio</option><option value="high">Alto</option></select>
+            <label style="margin-top:.6rem;display:block">Links</label><select id="am-links"><option value="allow">Permitir</option><option value="filter">Filtrar enlaces</option></select>
+            <label style="margin-top:.6rem;display:block">Palabras bloqueadas</label><input id="am-words" class="text-input" placeholder="palabra1, palabra2">
+          </div>
+          <div class="info-box app-card"><h3>🎫 Tickets</h3><p>Configura el sistema de soporte del servidor.</p>
+            <label><input id="ticket-enabled" type="checkbox"> Activar tickets</label>
+            <label style="margin-top:.6rem;display:block">Categoría</label><select id="ticket-category"></select>
+            <label style="margin-top:.6rem;display:block">Canal de logs</label><select id="ticket-log"></select>
+            <input id="ticket-message" class="text-input" style="margin-top:.6rem" placeholder="Mensaje del panel de tickets">
+          </div>
+          <div class="info-box app-card"><h3>💡 Sugerencias</h3><p>Configura dónde llegan y cómo se gestionan.</p>
+            <label><input id="suggest-enabled" type="checkbox"> Activar sugerencias</label>
+            <label style="margin-top:.6rem;display:block">Canal</label><select id="suggest-channel"></select>
+            <label style="margin-top:.6rem;display:block">Canal de logs</label><select id="suggest-log"></select>
+          </div>
+          <div class="info-box app-card"><h3>🎉 Sorteos</h3><p>Valores predeterminados para tus sorteos.</p>
+            <label style="display:block">Canal predeterminado</label><select id="giveaway-channel"></select>
+            <label style="margin-top:.6rem;display:block">Duración</label><select id="giveaway-duration"><option value="10m">10 minutos</option><option value="30m">30 minutos</option><option value="1h">1 hora</option><option value="6h">6 horas</option><option value="24h">24 horas</option></select>
+            <label style="margin-top:.6rem;display:block">Ganadores</label><input id="giveaway-winners" class="text-input" type="number" min="1" max="50" value="1">
+          </div>
+        </div>
+        <div class="cards-row">
+          <div class="info-box app-card"><h3>📊 Encuestas</h3><p>Canal y comportamiento predeterminados.</p>
+            <label style="display:block">Canal</label><select id="poll-channel"></select>
+            <label style="margin-top:.6rem;display:block">Permitir votos múltiples</label><input id="poll-multi" type="checkbox">
+          </div>
+          <div class="info-box app-card"><h3>📋 Logs</h3><p>Centraliza los registros del bot en Discord.</p>
+            <label style="display:block">Canal principal</label><select id="log-channel"></select>
+            <label style="margin-top:.6rem;display:block">Registrar mensajes</label><input id="log-messages" type="checkbox">
+            <label style="display:block;margin-top:.35rem">Registrar moderación</label><input id="log-moderation" type="checkbox">
+            <label style="display:block;margin-top:.35rem">Registrar cambios de servidor</label><input id="log-server" type="checkbox">
+          </div>
+          <div class="info-box app-card"><h3>⚡ Comandos personalizados</h3><p>Guarda respuestas simples para comandos propios.</p>
+            <input id="custom-trigger" class="text-input" placeholder="hola">
+            <input id="custom-response" class="text-input" style="margin-top:.6rem" placeholder="¡Hola {user}!">
+            <button id="custom-add" class="btn btn-primary" style="margin-top:.6rem">➕ Añadir comando</button>
+            <div id="custom-list" class="mini-list"></div>
+          </div>
+          <div class="info-box app-card"><h3>🔔 Notificaciones</h3><p>Prepara canales para anuncios y eventos.</p>
+            <label style="display:block">Anuncios</label><select id="notify-channel"></select>
+            <label style="display:block;margin-top:.6rem">Mensajes automáticos</label><input id="notify-enabled" type="checkbox">
+          </div>
+        </div>
+        <div class="info-box" style="margin-top:1rem"><h3>💾 Estado</h3><p id="apps-status">Los cambios se guardan automáticamente por servidor.</p></div>
+      </section>
+
+      <section class="section-panel" id="section-members">
+        <p class="section-desc">Herramientas rápidas para gestionar miembros desde el panel.</p>
+        <div class="cards-row">
+          <div class="info-box"><h3>🎭 Gestionar roles</h3>
+            <input id="member-id" class="text-input" placeholder="ID del usuario">
+            <select id="member-role" style="margin-top:.6rem"></select>
+            <div style="display:flex;gap:.6rem;margin-top:.7rem;flex-wrap:wrap"><button class="btn btn-primary" id="member-add-role">➕ Dar rol</button><button class="btn btn-ghost" id="member-remove-role">➖ Quitar rol</button></div>
+          </div>
+          <div class="info-box"><h3>✏️ Apodo</h3>
+            <input id="member-nick-id" class="text-input" placeholder="ID del usuario">
+            <input id="member-nick" class="text-input" style="margin-top:.6rem" placeholder="Nuevo apodo (vacío = quitar)">
+            <button class="btn btn-primary" id="member-nick-save" style="margin-top:.7rem">Guardar apodo</button>
+          </div>
+          <div class="info-box"><h3>🧹 Limpiar mensajes</h3>
+            <select id="purge-channel"></select>
+            <input id="purge-amount" class="text-input" type="number" min="1" max="100" value="10" style="margin-top:.6rem">
+            <button class="btn btn-ghost" id="purge-btn" style="margin-top:.7rem">🧹 Eliminar mensajes</button>
+          </div>
+          <div class="info-box"><h3>🔒 Bloquear canal</h3>
+            <select id="lock-channel"></select>
+            <div style="display:flex;gap:.6rem;margin-top:.7rem;flex-wrap:wrap"><button class="btn btn-ghost" id="lock-btn">🔒 Bloquear</button><button class="btn btn-ghost" id="unlock-btn">🔓 Desbloquear</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-quick">
+        <p class="section-desc">Acciones rápidas que antes requerían entrar a Discord. Todo usa el servidor seleccionado.</p>
+        <div class="cards-row">
+          <div class="info-box"><h3>📢 Anuncio</h3><select id="quick-ann-channel"></select><textarea id="quick-ann-text" class="text-input" rows="4" style="margin-top:.6rem" placeholder="Escribe el anuncio..."></textarea><button class="btn btn-primary" id="quick-ann-send" style="margin-top:.6rem">📢 Enviar anuncio</button></div>
+          <div class="info-box"><h3>📋 Logs</h3><select id="quick-log-channel"></select><button class="btn btn-ghost" id="quick-log-test" style="margin-top:.6rem">🧪 Probar canal de logs</button><p class="hint">Comprueba desde el panel que JuliDev puede escribir en el canal elegido.</p></div>
+          <div class="info-box"><h3>🔄 Sincronizar</h3><p>Vuelve a leer canales, roles y configuración desde Discord.</p><button class="btn btn-ghost" id="quick-refresh">🔄 Sincronizar ahora</button></div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-server">
+        <p class="section-desc">Administración del servidor y accesos rápidos.</p>
+        <div class="cards-row">
+          <div class="info-box"><h3>🏰 Estado</h3><p>Servidor: <strong id="server-name-card">—</strong></p><p>Miembros: <strong id="server-members-card">—</strong></p><p>Canales: <strong id="server-channels-card">—</strong></p><p>Roles: <strong id="server-roles-card">—</strong></p></div>
+          <div class="info-box"><h3>🔗 Acciones</h3><button class="btn btn-ghost" id="refresh-all">🔄 Actualizar todo</button><a id="server-export" class="btn btn-ghost" style="margin-top:.6rem" href="#">⬇️ Exportar configuración</a></div>
+          <div class="info-box"><h3>⚠️ Zona peligrosa</h3><p>Las acciones siguientes afectan directamente a Discord.</p><button class="btn btn-ghost" id="reset-config">🗑️ Restablecer configuración del panel</button></div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-tools">
+        <p class="section-desc">Herramientas rápidas para administrar el servidor.</p>
+        <div class="cards-row">
+          <div class="info-box">
+            <h3>🤖 Identidad</h3>
+            <p>Cambia el nombre que usa el panel para identificar al bot en este servidor.</p>
+            <input id="bot-name" class="text-input" placeholder="JuliDev" />
+            <button class="btn btn-primary" id="btn-save-bot-name" style="margin-top:.7rem">💾 Guardar nombre</button>
+          </div>
+          <div class="info-box">
+            <h3>📋 Exportar configuración</h3>
+            <p>Descarga la configuración actual de este servidor como JSON.</p>
+            <a id="export-config" class="btn btn-ghost" href="#">⬇️ Exportar JSON</a>
+          </div>
+        </div>
+        <div class="info-box" style="margin-top:1rem">
+          <h3>🔄 Sincronización</h3>
+          <p>Los cambios guardados se mantienen separados por servidor. No hay un GUILD_ID fijo en estas funciones del panel.</p>
+        </div>
+      </section>
+
     </main>
   </div>
   <div class="toast" id="toast"></div>

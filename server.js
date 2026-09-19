@@ -14,7 +14,8 @@ const REDIRECT_URI = process.env.REDIRECT_URI || `http://localhost:${PORT}/auth/
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&permissions=8&scope=bot%20applications.commands`;
 
-const GUILDS_DIR = path.join(__dirname, 'data', 'guilds');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const GUILDS_DIR = path.join(DATA_DIR, 'guilds');
 fs.mkdirSync(GUILDS_DIR, { recursive: true });
 
 // ─── Config por servidor ─────────────────────────────────────
@@ -22,31 +23,59 @@ function configPath(guildId) {
   return path.join(GUILDS_DIR, `${guildId}.json`);
 }
 
-function loadGuildConfig(guildId) {
-  const p = configPath(guildId);
-  if (fs.existsSync(p)) {
-    try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) {}
-  }
+function baseGuildConfig() {
   return {
+    version: 3,
     channels: {
-      bienvenida: '', invitaciones: '', anuncios: '', encuestas: '',
-      sorteos: '', chat: '', comandos: '', sugerencias: '',
-      ticketsCategory: '', soportePublico: '', baneados: '',
-      logs: '', logTickets: '', staffChat: ''
+      bienvenida: '', invitaciones: '', anuncios: '', encuestas: '', sorteos: '', chat: '', comandos: '', sugerencias: '',
+      ticketsCategory: '', soportePublico: '', baneados: '', logs: '', logTickets: '', staffChat: ''
     },
     staffRoles: [],
     autoRole: { enabled: false, roleId: '' },
-    welcome: {
-      enabled: true,
-      message: 'Hey {user}, bienvenido a **{server}**!\nContigo somos **{count}** miembros.\nInvitado por: {inviter}'
-    },
+    welcome: { enabled: true, type: 'embed', message: 'Hey {user}, bienvenido a **{server}**!\nContigo somos **{count}** miembros.\nInvitado por: {inviter}', title: '¡Bienvenido!', color: '#9b59b6', image: '', thumbnail: '' },
     invites: { enabled: true },
-    botName: 'JuliDev'
+    botName: 'JuliDev',
+    automod: { enabled: false, spam: 'off', links: 'allow', words: [] },
+    tickets: { enabled: false, category: '', logChannel: '', message: '🎫 Abre un ticket para recibir ayuda.' },
+    suggestions: { enabled: true, channel: '', logChannel: '' },
+    giveaways: { channel: '', duration: '1h', winners: 1 },
+    polls: { channel: '', multi: false },
+    logs: { channel: '', messages: false, moderation: true, server: true },
+    notifications: { channel: '', enabled: false },
+    customCommands: []
+  };
+}
+
+function loadGuildConfig(guildId) {
+  const defaults = baseGuildConfig();
+  const p = configPath(guildId);
+  let saved = {};
+  if (fs.existsSync(p)) {
+    try { saved = JSON.parse(fs.readFileSync(p, 'utf8')) || {}; } catch (_) { saved = {}; }
+  }
+  return {
+    ...defaults, ...saved,
+    channels: { ...defaults.channels, ...(saved.channels || {}) },
+    autoRole: { ...defaults.autoRole, ...(saved.autoRole || {}) },
+    welcome: { ...defaults.welcome, ...(saved.welcome || {}) },
+    invites: { ...defaults.invites, ...(saved.invites || {}) },
+    automod: { ...defaults.automod, ...(saved.automod || {}) },
+    tickets: { ...defaults.tickets, ...(saved.tickets || {}) },
+    suggestions: { ...defaults.suggestions, ...(saved.suggestions || {}) },
+    giveaways: { ...defaults.giveaways, ...(saved.giveaways || {}) },
+    polls: { ...defaults.polls, ...(saved.polls || {}) },
+    logs: { ...defaults.logs, ...(saved.logs || {}) },
+    notifications: { ...defaults.notifications, ...(saved.notifications || {}) },
+    staffRoles: Array.isArray(saved.staffRoles) ? saved.staffRoles : defaults.staffRoles,
+    customCommands: Array.isArray(saved.customCommands) ? saved.customCommands : defaults.customCommands
   };
 }
 
 function saveGuildConfig(guildId, cfg) {
-  fs.writeFileSync(configPath(guildId), JSON.stringify(cfg, null, 2), 'utf8');
+  const target = configPath(guildId);
+  const temp = `${target}.tmp`;
+  fs.writeFileSync(temp, JSON.stringify(cfg, null, 2), 'utf8');
+  fs.renameSync(temp, target);
   // Copia opcional para que el bot lea la misma config
   const syncDir = process.env.BOT_CONFIG_DIR;
   if (syncDir) {
@@ -78,6 +107,52 @@ app.use(express.static(path.join(__dirname, 'public')));
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.status(401).json({ error: 'No autenticado' });
   next();
+}
+
+function ensureGuildAdmin(req, guildId) {
+  const guilds = req.session.userGuilds || [];
+  const g = guilds.find(x => x.id === guildId);
+  if (!g) return false;
+  try { return !!g.owner || ((BigInt(g.permissions || '0') & 8n) === 8n); }
+  catch (_) { return !!g.owner; }
+}
+
+async function discordApi(pathname, options = {}) {
+  if (!BOT_TOKEN) throw new Error('BOT_TOKEN no configurado');
+  const headers = {
+    Authorization: `Bot ${BOT_TOKEN}`,
+    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(options.headers || {})
+  };
+  const r = await fetch(`https://discord.com/api/v10${pathname}`, { ...options, headers });
+  const text = await r.text();
+  let data;
+  try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }
+  if (!r.ok) {
+    const msg = typeof data === 'string' ? data : (data?.message || `Discord API ${r.status}`);
+    const err = new Error(msg);
+    err.status = r.status;
+    err.discord = data;
+    throw err;
+  }
+  return data;
+}
+
+function adminGuild(req, res, guildId) {
+  if (!ensureGuildAdmin(req, guildId)) {
+    res.status(403).json({ error: 'No tienes permisos de administrador en este servidor.' });
+    return false;
+  }
+  return true;
+}
+
+function defaultGuildConfig() {
+  return loadGuildConfig('__default__');
+}
+
+function cleanWords(value) {
+  if (Array.isArray(value)) return value.map(String).map(x => x.trim()).filter(Boolean).slice(0, 200);
+  return String(value || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 200);
 }
 
 // ─── OAuth Discord ───────────────────────────────────────────
@@ -278,22 +353,242 @@ app.get('/api/guild/:id/roles', requireAuth, async (req, res) => {
   }
 });
 
+
+// ─── Herramientas del panel ──────────────────────────────────
+// Crear canal
+app.post('/api/guild/:id/channels/create', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const { name, type = 0, parentId = '', topic = '', nsfw = false } = req.body || {};
+  if (!name || !String(name).trim()) return res.status(400).json({ error: 'Escribe un nombre.' });
+  if (![0, 4, 5].includes(Number(type))) return res.status(400).json({ error: 'Tipo de canal no permitido.' });
+  try {
+    const body = { name: String(name).trim().slice(0, 100), type: Number(type) };
+    if (parentId) body.parent_id = parentId;
+    if (Number(type) === 0 || Number(type) === 5) {
+      if (topic) body.topic = String(topic).slice(0, 1024);
+      body.nsfw = !!nsfw;
+    }
+    const ch = await discordApi(`/guilds/${guildId}/channels`, { method: 'POST', body: JSON.stringify(body) });
+    res.json({ success: true, channel: { id: ch.id, name: ch.name, type: ch.type, parent_id: ch.parent_id || null } });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+// Crear rol
+app.post('/api/guild/:id/roles/create', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const { name, color = 0, hoist = false, mentionable = false } = req.body || {};
+  if (!name || !String(name).trim()) return res.status(400).json({ error: 'Escribe un nombre.' });
+  try {
+    const body = {
+      name: String(name).trim().slice(0, 100),
+      color: Math.max(0, Math.min(0xFFFFFF, parseInt(String(color).replace('#',''), 16) || 0)),
+      hoist: !!hoist,
+      mentionable: !!mentionable
+    };
+    const role = await discordApi(`/guilds/${guildId}/roles`, { method: 'POST', body: JSON.stringify(body) });
+    res.json({ success: true, role: { id: role.id, name: role.name, color: role.color, position: role.position } });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+// Crear una estructura inicial completa, con plantillas y sin duplicar nombres existentes.
+app.post('/api/guild/:id/setup-pack', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const template = String(req.body?.template || 'community');
+  const templates = {
+    community: {
+      roles: ['Owner','Admin','Staff','Mod','Helper','Miembro'],
+      categories: [
+        { name: '📌 INFORMACIÓN', channels: ['📢・anuncios','📜・reglas','👋・bienvenida','📌・información'] },
+        { name: '💬 COMUNIDAD', channels: ['💬・general','🤖・comandos','💡・sugerencias','📸・media','🎉・sorteos','📊・encuestas'] },
+        { name: '🎫 SOPORTE', channels: ['🎫・soporte','🎟️・tickets'] },
+        { name: '🛡️ STAFF', channels: ['💬・staff','📋・logs','🚨・reportes'] }
+      ]
+    },
+    gaming: {
+      roles: ['Owner','Admin','Moderador','Helper','Creador','Miembro'],
+      categories: [
+        { name: '📌 INFORMACIÓN', channels: ['📢・anuncios','📜・reglas','👋・bienvenida'] },
+        { name: '🎮 GAMING', channels: ['💬・general','🎮・juegos','🏆・eventos','📸・clips','🤖・comandos'] },
+        { name: '🎫 SOPORTE', channels: ['🎫・tickets','💡・sugerencias'] },
+        { name: '🛡️ STAFF', channels: ['📋・logs','💬・staff'] }
+      ]
+    },
+    support: {
+      roles: ['Owner','Admin','Soporte','Moderador','Miembro'],
+      categories: [
+        { name: '📌 INFORMACIÓN', channels: ['📢・anuncios','📜・reglas','👋・bienvenida'] },
+        { name: '🎫 SOPORTE', channels: ['🎫・soporte','🎟️・tickets','💡・sugerencias'] },
+        { name: '🛡️ STAFF', channels: ['📋・logs','💬・staff','🚨・reportes'] }
+      ]
+    }
+  };
+  const pack = templates[template] || templates.community;
+  const created = { roles: [], categories: [], channels: [], skipped: [] };
+  try {
+    const existingChannels = await discordApi(`/guilds/${guildId}/channels`);
+    const existingRoles = await discordApi(`/guilds/${guildId}/roles`);
+    const channelByName = new Map(existingChannels.map(c => [c.name.toLowerCase(), c]));
+    const roleByName = new Map(existingRoles.map(r => [r.name.toLowerCase(), r]));
+
+    for (const roleName of pack.roles) {
+      if (roleByName.has(roleName.toLowerCase())) { created.skipped.push(`rol:${roleName}`); continue; }
+      const role = await discordApi(`/guilds/${guildId}/roles`, {
+        method: 'POST', body: JSON.stringify({ name: roleName, color: 0x9B59B6, mentionable: true })
+      });
+      created.roles.push({ id: role.id, name: role.name });
+      roleByName.set(role.name.toLowerCase(), role);
+    }
+    for (const cat of pack.categories) {
+      let category = channelByName.get(cat.name.toLowerCase());
+      if (!category) {
+        category = await discordApi(`/guilds/${guildId}/channels`, { method: 'POST', body: JSON.stringify({ name: cat.name, type: 4 }) });
+        created.categories.push({ id: category.id, name: category.name });
+        channelByName.set(category.name.toLowerCase(), category);
+      } else {
+        created.skipped.push(`categoría:${cat.name}`);
+      }
+      for (const channelName of cat.channels) {
+        if (channelByName.has(channelName.toLowerCase())) { created.skipped.push(`canal:${channelName}`); continue; }
+        const ch = await discordApi(`/guilds/${guildId}/channels`, {
+          method: 'POST', body: JSON.stringify({ name: channelName, type: 0, parent_id: category.id })
+        });
+        created.channels.push({ id: ch.id, name: ch.name, parent_id: category.id });
+        channelByName.set(ch.name.toLowerCase(), ch);
+      }
+    }
+    const cfg = loadGuildConfig(guildId);
+    const allChannels = [...existingChannels, ...created.channels, ...created.categories];
+    const find = (needle) => allChannels.find(c => String(c.name).toLowerCase().includes(needle))?.id || '';
+    cfg.channels = {
+      ...cfg.channels,
+      anuncios: find('anuncios') || cfg.channels.anuncios,
+      bienvenida: find('bienvenida') || cfg.channels.bienvenida,
+      chat: find('general') || cfg.channels.chat,
+      comandos: find('comandos') || cfg.channels.comandos,
+      sugerencias: find('sugerencias') || cfg.channels.sugerencias,
+      sorteos: find('sorteos') || cfg.channels.sorteos,
+      encuestas: find('encuestas') || cfg.channels.encuestas,
+      logs: find('logs') || cfg.channels.logs,
+      soportePublico: find('soporte') || cfg.channels.soportePublico,
+      ticketsCategory: allChannels.find(c => c.type === 4 && String(c.name).toLowerCase().includes('soporte'))?.id || cfg.channels.ticketsCategory,
+      staffChat: find('staff') || cfg.channels.staffChat
+    };
+    const wantedRoles = new Set(pack.roles.filter(x => x !== 'Miembro'));
+    cfg.staffRoles = [...new Set([...cfg.staffRoles, ...allRoles(existingRoles, created.roles).filter(r => wantedRoles.has(r.name)).map(r => r.id)])];
+    saveGuildConfig(guildId, cfg);
+    res.json({ success: true, template, created });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message, created });
+  }
+});
+
+function allRoles(existing, created) {
+  return [...existing.map(r => ({ id: r.id, name: r.name })), ...created];
+}
+
+// Acción de moderación individual desde el panel
+app.post('/api/guild/:id/moderation', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const { action, userId, reason = '' } = req.body || {};
+  if (!/^\d{17,20}$/.test(String(userId || ''))) return res.status(400).json({ error: 'ID de usuario inválido.' });
+  try {
+    let result;
+    if (action === 'kick') {
+      result = await discordApi(`/guilds/${guildId}/members/${userId}`, {
+        method: 'DELETE',
+        body: JSON.stringify({})
+      });
+    } else if (action === 'ban') {
+      result = await discordApi(`/guilds/${guildId}/bans/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ delete_message_seconds: 0, reason: String(reason).slice(0, 512) })
+      });
+    } else if (action === 'unban') {
+      result = await discordApi(`/guilds/${guildId}/bans/${userId}`, {
+        method: 'DELETE',
+        body: JSON.stringify({})
+      });
+    } else if (action === 'timeout') {
+      const until = new Date(Date.now() + Math.max(1, Math.min(28 * 24 * 60, Number(req.body.minutes) || 10)) * 60000).toISOString();
+      result = await discordApi(`/guilds/${guildId}/members/${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ communication_disabled_until: until })
+      });
+    } else if (action === 'untimeout') {
+      result = await discordApi(`/guilds/${guildId}/members/${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ communication_disabled_until: null })
+      });
+    } else {
+      return res.status(400).json({ error: 'Acción no válida.' });
+    }
+    res.json({ success: true, result });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+// Eliminar un canal creado por el usuario desde el panel
+app.delete('/api/guild/:id/channels/:channelId', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  try {
+    await discordApi(`/channels/${req.params.channelId}`, { method: 'DELETE' });
+    res.json({ success: true });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+// Eliminar un rol desde el panel
+app.delete('/api/guild/:id/roles/:roleId', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  try {
+    await discordApi(`/guilds/${guildId}/roles/${req.params.roleId}`, { method: 'DELETE' });
+    res.json({ success: true });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+// Guardar nombre del bot en la configuración del servidor
+app.post('/api/guild/:id/bot-settings', requireAuth, (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const cfg = loadGuildConfig(guildId);
+  cfg.botName = String(req.body?.botName || 'JuliDev').slice(0, 80);
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, botName: cfg.botName });
+});
+
 // Config del servidor
 app.get('/api/guild/:id/config', requireAuth, (req, res) => {
-  res.json(loadGuildConfig(req.params.id));
+  if (!adminGuild(req, res, req.params.id)) return;
+  const guildId = req.params.id;
+  const cfg = loadGuildConfig(guildId);
+  res.json({ ...cfg, __persisted: fs.existsSync(configPath(guildId)) });
 });
 
 app.post('/api/guild/:id/config', requireAuth, (req, res) => {
+  if (!adminGuild(req, res, req.params.id)) return;
   try {
     const current = loadGuildConfig(req.params.id);
+    const b = req.body || {};
     const updated = {
       ...current,
-      ...req.body,
-      channels: { ...current.channels, ...(req.body.channels || {}) },
-      staffRoles: req.body.staffRoles !== undefined ? req.body.staffRoles : current.staffRoles,
-      autoRole: req.body.autoRole !== undefined ? req.body.autoRole : current.autoRole,
-      welcome: req.body.welcome !== undefined ? { ...current.welcome, ...req.body.welcome } : current.welcome,
-      invites: req.body.invites !== undefined ? { ...current.invites, ...req.body.invites } : current.invites
+      ...b,
+      channels: { ...current.channels, ...(b.channels || {}) },
+      staffRoles: b.staffRoles !== undefined ? (Array.isArray(b.staffRoles) ? b.staffRoles : current.staffRoles) : current.staffRoles,
+      autoRole: b.autoRole !== undefined ? { ...current.autoRole, ...b.autoRole } : current.autoRole,
+      welcome: b.welcome !== undefined ? { ...current.welcome, ...b.welcome } : current.welcome,
+      invites: b.invites !== undefined ? { ...current.invites, ...b.invites } : current.invites,
+      automod: b.automod !== undefined ? { ...current.automod, ...b.automod, words: cleanWords(b.automod.words) } : current.automod,
+      tickets: b.tickets !== undefined ? { ...current.tickets, ...b.tickets } : current.tickets,
+      suggestions: b.suggestions !== undefined ? { ...current.suggestions, ...b.suggestions } : current.suggestions,
+      giveaways: b.giveaways !== undefined ? { ...current.giveaways, ...b.giveaways, winners: Math.max(1, Math.min(50, Number(b.giveaways.winners) || 1)) } : current.giveaways,
+      polls: b.polls !== undefined ? { ...current.polls, ...b.polls } : current.polls,
+      logs: b.logs !== undefined ? { ...current.logs, ...b.logs } : current.logs,
+      notifications: b.notifications !== undefined ? { ...current.notifications, ...b.notifications } : current.notifications,
+      customCommands: b.customCommands !== undefined ? (Array.isArray(b.customCommands) ? b.customCommands.slice(0, 100) : current.customCommands) : current.customCommands
     };
     saveGuildConfig(req.params.id, updated);
     res.json({ success: true, config: updated });
@@ -303,6 +598,7 @@ app.post('/api/guild/:id/config', requireAuth, (req, res) => {
 });
 
 app.get('/api/guild/:id/export', requireAuth, (req, res) => {
+  if (!adminGuild(req, res, req.params.id)) return;
   const cfg = loadGuildConfig(req.params.id);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename=config-${req.params.id}.json`);
@@ -400,6 +696,99 @@ app.post('/api/guild/:id/send', requireAuth, async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+
+// Probar escritura en el canal de logs elegido.
+app.post('/api/guild/:id/test-log', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const cfg = loadGuildConfig(guildId);
+  const channelId = req.body?.channelId || cfg.logs?.channel || cfg.channels?.logs;
+  if (!channelId) return res.status(400).json({ error: 'Selecciona un canal de logs.' });
+  try {
+    const body = { embeds: [{ title: '🧪 Prueba de logs', description: 'JuliDev pudo escribir correctamente en este canal.', color: 0x9B59B6, footer: { text: `Servidor ${guildId}` }, timestamp: new Date().toISOString() }] };
+    await discordApi(`/channels/${channelId}/messages`, { method: 'POST', body: JSON.stringify(body) });
+    res.json({ success: true });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+// ─── Acciones avanzadas del panel ───────────────────────────
+app.post('/api/guild/:id/member-role', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const { userId, roleId, mode = 'add' } = req.body || {};
+  if (!/^\d{15,25}$/.test(String(userId || '')) || !/^\d{15,25}$/.test(String(roleId || ''))) return res.status(400).json({ error: 'ID de usuario o rol inválido.' });
+  try {
+    await discordApi(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, { method: mode === 'remove' ? 'DELETE' : 'PUT' });
+    res.json({ success: true });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+app.post('/api/guild/:id/nickname', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const { userId, nick = '' } = req.body || {};
+  if (!/^\d{15,25}$/.test(String(userId || ''))) return res.status(400).json({ error: 'ID de usuario inválido.' });
+  try {
+    await discordApi(`/guilds/${guildId}/members/${userId}`, { method: 'PATCH', body: JSON.stringify({ nick: String(nick).slice(0, 32) || null }) });
+    res.json({ success: true });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+app.post('/api/guild/:id/purge', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const { channelId, amount = 10 } = req.body || {};
+  const n = Math.max(1, Math.min(100, Number(amount) || 10));
+  if (!channelId) return res.status(400).json({ error: 'Elige un canal.' });
+  try {
+    const msgs = await discordApi(`/channels/${channelId}/messages?limit=${n}`);
+    if (!Array.isArray(msgs) || !msgs.length) return res.json({ success: true, deleted: 0 });
+    let deleted = 0;
+    if (msgs.length === 1) {
+      await discordApi(`/channels/${channelId}/messages/${msgs[0].id}`, { method: 'DELETE' }); deleted = 1;
+    } else {
+      const recent = msgs.filter(m => Date.now() - Date.parse(m.timestamp) < 14 * 24 * 60 * 60 * 1000).map(m => m.id);
+      if (!recent.length) return res.json({ success: true, deleted: 0, note: 'Discord no permite borrar masivamente mensajes de más de 14 días.' });
+      if (recent.length === 1) { await discordApi(`/channels/${channelId}/messages/${recent[0]}`, { method: 'DELETE' }); deleted = 1; }
+      else { await discordApi(`/channels/${channelId}/messages/bulk-delete`, { method: 'POST', body: JSON.stringify({ messages: recent }) }); deleted = recent.length; }
+    }
+    res.json({ success: true, deleted });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+app.post('/api/guild/:id/channel-lock', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const { channelId, locked = true } = req.body || {};
+  if (!channelId) return res.status(400).json({ error: 'Elige un canal.' });
+  try {
+    await discordApi(`/channels/${channelId}/permissions/${guildId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ type: 0, allow: locked ? '0' : '2048', deny: locked ? '2048' : '0' })
+    });
+    res.json({ success: true, locked: !!locked });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+app.post('/api/guild/:id/reset-config', requireAuth, (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  try {
+    const current = loadGuildConfig(guildId);
+    const fresh = {
+      channels: {}, staffRoles: [], autoRole: { enabled: false, roleId: '' },
+      welcome: { enabled: true, type: 'embed', message: 'Hey {user}, gracias por unirte a **{server}**.', title: '¡Bienvenido!', color: '#9b59b6', image: '', thumbnail: '' },
+      invites: { enabled: true }, botName: current.botName || 'JuliDev',
+      automod: { enabled: false, spam: 'off', links: 'allow', words: [] },
+      tickets: { enabled: false, category: '', logChannel: '', message: '🎫 Abre un ticket para recibir ayuda.' },
+      suggestions: { enabled: true, channel: '', logChannel: '' }, giveaways: { channel: '', duration: '1h', winners: 1 },
+      polls: { channel: '', multi: false }, logs: { channel: '', messages: false, moderation: true, server: true },
+      notifications: { channel: '', enabled: false }, customCommands: []
+    };
+    saveGuildConfig(guildId, fresh); res.json({ success: true, config: fresh });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── Páginas ─────────────────────────────────────────────────

@@ -177,3 +177,18 @@ code{background:rgba(155,89,182,.15);color:var(--primary-light);padding:.12em .4
 .dp-embed-title{font-weight:650;color:#f2f3f5;margin-bottom:.35rem;font-size:.95rem}
 .dp-embed-desc{color:#dbdee1;font-size:.875rem;white-space:pre-wrap;line-height:1.4}
 .dp-embed-img{max-width:100%;border-radius:4px;margin-top:.6rem;display:block}
+
+/* Herramientas nuevas del panel */
+.info-box h3 { margin-top: 0; }
+.info-box ul { margin: .7rem 0; padding-left: 1.2rem; color: var(--text-muted); }
+.info-box li { margin: .25rem 0; }
+.cards-row .info-box { flex: 1; min-width: 280px; }
+
+/* Apps / advanced dashboard */
+.app-card{min-width:280px}
+.app-card>select,.app-card>input:not([type="checkbox"]){width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.88rem;padding:.5rem .7rem;border-radius:8px;outline:none}
+.app-card>select:focus,.app-card>input:focus{border-color:var(--primary)}
+.mini-list{margin-top:.7rem;display:flex;flex-direction:column;gap:.4rem;max-height:150px;overflow:auto}
+.mini-item{display:flex;align-items:center;gap:.45rem;padding:.45rem .55rem;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:.78rem}
+.mini-item code{color:var(--primary-light);font-weight:700}.mini-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted)}
+.mini-item button{border:0;background:transparent;color:var(--danger);font-size:1.1rem;cursor:pointer}
