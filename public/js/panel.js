@@ -13,6 +13,21 @@ const CHANNEL_KEYS = [
   { key: 'logs', label: 'Logs', hint: 'Logs de moderación' },
   { key: 'logTickets', label: 'Logs tickets', hint: 'Logs de tickets' },
   { key: 'staffChat', label: 'Staff chat', hint: 'Chat del staff' },
+  { key: 'streaming', label: 'Streams', hint: 'Avisos de directos' },
+  { key: 'eventos', label: 'Eventos', hint: 'Eventos y actividades' },
+  { key: 'postulaciones', label: 'Postulaciones', hint: 'Solicitudes del servidor' },
+  { key: 'boosteos', label: 'Boosts', hint: 'Avisos de mejoras del servidor' },
+  { key: 'spoiler', label: 'Spoilers', hint: 'Contenido con spoilers' },
+  { key: 'multimedia', label: 'Multimedia', hint: 'Fotos y vídeos' },
+  { key: 'memes', label: 'Memes', hint: 'Memes de la comunidad' },
+  { key: 'alianzas', label: 'Alianzas', hint: 'Solicitudes de alianza' },
+  { key: 'videos', label: 'Vídeos', hint: 'Publicaciones de vídeo' },
+  { key: 'tiktoks', label: 'TikToks', hint: 'Contenido corto' },
+  { key: 'anunciosStaff', label: 'Anuncios staff', hint: 'Avisos internos del equipo' },
+  { key: 'promoteDemote', label: 'Ascensos y descensos', hint: 'Cambios de staff' },
+  { key: 'formularioStaff', label: 'Formulario staff', hint: 'Solicitudes para entrar al equipo' },
+  { key: 'staffList', label: 'Lista staff', hint: 'Información del equipo' },
+  { key: 'ideasStaff', label: 'Ideas staff', hint: 'Ideas internas' },
 ];
 
 const DEFAULT_WELCOME =
@@ -24,15 +39,6 @@ const DEFAULT_WELCOME =
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;',"\"":'&quot;'}[ch]));
-}
-
-const LOCAL_CONFIG_KEY = `julidev-config:${location.pathname.split('/').pop()}`;
-
-function saveLocalBackup() {
-  try { localStorage.setItem(LOCAL_CONFIG_KEY, JSON.stringify(config)); } catch (_) {}
-}
-function loadLocalBackup() {
-  try { const raw = localStorage.getItem(LOCAL_CONFIG_KEY); return raw ? JSON.parse(raw) : null; } catch (_) { return null; }
 }
 
 const guildId = location.pathname.split('/').pop();
@@ -193,7 +199,6 @@ function setupQuickActions() {
   };
   const refreshBtn = document.getElementById('quick-refresh'); if (refreshBtn) refreshBtn.onclick = refreshGuildData;
   const forceSave = document.getElementById('btn-force-save'); if (forceSave) forceSave.onclick = () => saveConfigToServer(true);
-  const clearLocal = document.getElementById('btn-clear-local'); if (clearLocal) clearLocal.onclick = () => { localStorage.removeItem(LOCAL_CONFIG_KEY); toast('🧹 Copia local borrada'); };
 }
 
 function setupNewTools() {
@@ -263,6 +268,19 @@ async function saveNick(){const userId=document.getElementById('member-nick-id')
 async function purge(){const channelId=document.getElementById('purge-channel').value,amount=Number(document.getElementById('purge-amount').value)||10;if(!channelId)return toast('Elige un canal','error');if(!confirm(`¿Eliminar hasta ${amount} mensajes?`))return;const r=await fetch(`/api/guild/${guildId}/purge`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({channelId,amount})});const d=await r.json();if(!r.ok)return toast(d.error||'No se pudo limpiar','error');toast(`🧹 Eliminados: ${d.deleted}`);}
 async function lockChannel(locked){const channelId=document.getElementById('lock-channel').value;if(!channelId)return toast('Elige un canal','error');const r=await fetch(`/api/guild/${guildId}/channel-lock`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({channelId,locked})});const d=await r.json();if(!r.ok)return toast(d.error||'No se pudo cambiar','error');toast(locked?'🔒 Canal bloqueado':'🔓 Canal desbloqueado');}
 function setupMembers(){document.getElementById('member-add-role')?.addEventListener('click',()=>memberRoleAction('add'));document.getElementById('member-remove-role')?.addEventListener('click',()=>memberRoleAction('remove'));document.getElementById('member-nick-save')?.addEventListener('click',saveNick);document.getElementById('purge-btn')?.addEventListener('click',purge);document.getElementById('lock-btn')?.addEventListener('click',()=>lockChannel(true));document.getElementById('unlock-btn')?.addEventListener('click',()=>lockChannel(false));}
+function setupSlowmode(){
+  const sel=document.getElementById('slowmode-channel');
+  if(sel) sel.innerHTML=channelOptions('');
+  document.getElementById('slowmode-btn')?.addEventListener('click',async()=>{
+    const channelId=document.getElementById('slowmode-channel')?.value;
+    const seconds=Number(document.getElementById('slowmode-seconds')?.value||0);
+    if(!channelId)return toast('Selecciona un canal','error');
+    const r=await fetch(`/api/guild/${guildId}/slowmode`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({channelId,seconds})});
+    const d=await r.json(); if(!r.ok)return toast(d.error||'No se pudo aplicar','error');
+    toast(seconds?`🐢 Modo lento establecido en ${seconds}s`:'✅ Modo lento desactivado');
+  });
+}
+
 function setupServerSection(){const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v??'—';};set('server-name-card',guildName);set('server-members-card',document.getElementById('ov-members')?.textContent);set('server-channels-card',guildChannels.length);set('server-roles-card',guildRoles.length);const ex=document.getElementById('server-export');if(ex)ex.href=`/api/guild/${guildId}/export`;document.getElementById('refresh-all')?.addEventListener('click',()=>location.reload());document.getElementById('reset-config')?.addEventListener('click',async()=>{if(!confirm('Esto borrará la configuración guardada del panel para este servidor. ¿Continuar?'))return;const r=await fetch(`/api/guild/${guildId}/reset-config`,{method:'POST',credentials:'include'});const d=await r.json();if(!r.ok)return toast(d.error||'No se pudo restablecer','error');config=d.config;setupApps();renderChannels();renderStaffRoles();renderAutoRole();renderWelcome();renderInvites();toast('🗑️ Configuración restablecida');});}
 
 async function init() {
@@ -282,10 +300,7 @@ async function init() {
   ]);
 
   const serverCfg = cfg && !cfg.error ? cfg : {};
-  const localCfg = loadLocalBackup();
-  const hasServerData = serverCfg.__persisted === true;
-  const sourceCfg = hasServerData ? serverCfg : (localCfg || serverCfg);
-
+  const sourceCfg = { ...serverCfg };
   delete sourceCfg.__persisted;
   config = {
     channels: { ...(sourceCfg.channels || {}) },
@@ -333,9 +348,9 @@ async function init() {
   setupApps();
   setupQuickActions();
   setupMembers();
+  setupSlowmode();
   setupServerSection();
-  saveLocalBackup();
-  if (!hasServerData && localCfg) { scheduleAutoSave(); }
+  setDirty(false);
 }
 
 
@@ -372,17 +387,7 @@ function roleOptions(selectedId) {
   return html;
 }
 
-let autoSaveTimer = null;
-let autoSaveInFlight = false;
-let autoSaveQueued = false;
-
-async function saveConfigToServer(showToast = false) {
-  saveLocalBackup();
-  if (autoSaveInFlight) {
-    autoSaveQueued = true;
-    return;
-  }
-  autoSaveInFlight = true;
+async function saveConfigToServer(showToast = true) {
   try {
     const res = await fetch(`/api/guild/${guildId}/config`, {
       method: 'POST',
@@ -393,25 +398,19 @@ async function saveConfigToServer(showToast = false) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) throw new Error(data.error || 'No se pudo guardar');
     config = data.config || config;
-    saveLocalBackup();
     setDirty(false);
     if (showToast) toast('✅ Configuración guardada');
+    return true;
   } catch (e) {
-    saveLocalBackup();
-    if (showToast) toast(`❌ No se pudo guardar en el servidor: ${e.message}. Se guardó una copia local.`, 'error');
-  } finally {
-    autoSaveInFlight = false;
-    if (autoSaveQueued) {
-      autoSaveQueued = false;
-      saveConfigToServer(false);
-    }
+    if (showToast) toast(`❌ No se pudo guardar: ${e.message}`, 'error');
+    return false;
   }
 }
 
 function scheduleAutoSave() {
+  // El nombre se conserva para no romper los controles existentes:
+  // ahora SOLO marca cambios pendientes. NO escribe en el servidor.
   setDirty(true);
-  clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(() => saveConfigToServer(false), 350);
 }
 
 function renderChannels() {
@@ -609,9 +608,14 @@ function renderSend() {
   };
 }
 
+window.addEventListener('beforeunload', (event) => {
+  if (dirty) {
+    event.preventDefault();
+    event.returnValue = 'Tienes cambios sin guardar.';
+  }
+});
+
 document.getElementById('btn-save').addEventListener('click', () => saveConfigToServer(true));
 
-window.addEventListener('beforeunload', () => { if (dirty) saveLocalBackup(); });
-window.addEventListener('pagehide', () => { if (dirty) saveLocalBackup(); });
 
 init();

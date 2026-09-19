@@ -772,6 +772,22 @@ app.post('/api/guild/:id/channel-lock', requireAuth, async (req, res) => {
   } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
+app.post('/api/guild/:id/slowmode', requireAuth, async (req, res) => {
+  const guildId = req.params.id;
+  if (!adminGuild(req, res, guildId)) return;
+  const { channelId, seconds } = req.body || {};
+  const n = Math.max(0, Math.min(21600, Number(seconds) || 0));
+  try {
+    await discordApi(`/channels/${channelId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ rate_limit_per_user: n })
+    });
+    res.json({ success: true, seconds: n });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
 app.post('/api/guild/:id/reset-config', requireAuth, (req, res) => {
   const guildId = req.params.id;
   if (!adminGuild(req, res, guildId)) return;

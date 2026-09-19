@@ -241,7 +241,7 @@
       </section>
 
       <section class="section-panel" id="section-setup">
-        <p class="section-desc">Constructor del servidor. Crea estructuras completas como un panel tipo Koya/MEE6 y evita duplicados automáticamente.</p>
+        <p class="section-desc">Constructor del servidor. Crea categorías, canales y roles organizados según la plantilla que elijas. Si un elemento ya existe, se reutiliza en lugar de crear otro igual.</p>
         <div class="cards-row">
           <div class="info-box">
             <h3>⚡ Plantilla</h3>
@@ -256,10 +256,9 @@
           </div>
           <div class="info-box">
             <h3>💾 Persistencia</h3>
-            <p>La configuración se guarda en el servidor y además en una copia local del navegador para que una recarga no borre tus selecciones.</p>
+            <p>Los cambios quedan pendientes en esta página hasta que pulses «Guardar cambios». Una vez guardados, se recuperan desde la configuración de este servidor al volver a entrar.</p>
             <button class="btn btn-ghost" id="btn-force-save">💾 Guardar ahora</button>
-            <button class="btn btn-ghost" id="btn-clear-local" style="margin-top:.5rem">🧹 Borrar copia local</button>
-          </div>
+                      </div>
         </div>
       </section>
 
@@ -281,7 +280,7 @@
       </section>
 
       <section class="section-panel" id="section-apps">
-        <p class="section-desc">Centro de funciones de JuliDev. Configura automatizaciones y módulos por servidor; los cambios se guardan automáticamente.</p>
+        <p class="section-desc">Centro de funciones de JuliDev. Configura automatizaciones y módulos por servidor; los cambios quedan pendientes hasta que pulses «Guardar cambios».</p>
         <div class="cards-row">
           <div class="info-box app-card"><h3>🛡️ AutoMod</h3><p>Filtros básicos contra spam, links y palabras bloqueadas.</p>
             <label><input id="am-enabled" type="checkbox"> Activar AutoMod</label>
@@ -328,7 +327,20 @@
             <label style="display:block;margin-top:.6rem">Mensajes automáticos</label><input id="notify-enabled" type="checkbox">
           </div>
         </div>
-        <div class="info-box" style="margin-top:1rem"><h3>💾 Estado</h3><p id="apps-status">Los cambios se guardan automáticamente por servidor.</p></div>
+        <div class="info-box" style="margin-top:1rem"><h3>💾 Estado</h3><p id="apps-status">Los cambios se guardan únicamente cuando pulsas «Guardar cambios».</p></div>
+        <div class="info-box" style="margin-top:1rem">
+          <h3>🧩 Qué hace cada función</h3>
+          <div class="feature-help">
+            <p><strong>AutoMod:</strong> revisa mensajes nuevos y puede eliminar enlaces, palabras bloqueadas y ráfagas de spam.</p>
+            <p><strong>Tickets:</strong> organiza solicitudes privadas de ayuda y permite definir la categoría y el canal donde se registran.</p>
+            <p><strong>Sugerencias:</strong> concentra las propuestas de los miembros en un canal específico.</p>
+            <p><strong>Sorteos:</strong> establece el canal, duración y cantidad de ganadores que usarán los sorteos.</p>
+            <p><strong>Encuestas:</strong> define dónde se publican las votaciones.</p>
+            <p><strong>Logs:</strong> reúne eventos importantes del servidor en un canal que tú eliges.</p>
+            <p><strong>Comandos personalizados:</strong> crea respuestas rápidas usando <code>!nombre</code>; puedes usar <code>{user}</code>, <code>{server}</code> y <code>{count}</code>.</p>
+            <p><strong>Notificaciones:</strong> reserva un canal para avisos automáticos que añadas posteriormente.</p>
+          </div>
+        </div>
       </section>
 
       <section class="section-panel" id="section-members">
@@ -352,6 +364,14 @@
           <div class="info-box"><h3>🔒 Bloquear canal</h3>
             <select id="lock-channel"></select>
             <div style="display:flex;gap:.6rem;margin-top:.7rem;flex-wrap:wrap"><button class="btn btn-ghost" id="lock-btn">🔒 Bloquear</button><button class="btn btn-ghost" id="unlock-btn">🔓 Desbloquear</button></div>
+          </div>
+          <div class="info-box"><h3>🐢 Modo lento</h3>
+            <p>Limita cuánto puede enviar mensajes una persona en un canal.</p>
+            <select id="slowmode-channel"></select>
+            <select id="slowmode-seconds" style="margin-top:.6rem">
+              <option value="0">Desactivado</option><option value="5">5 segundos</option><option value="10">10 segundos</option><option value="30">30 segundos</option><option value="60">1 minuto</option><option value="300">5 minutos</option><option value="900">15 minutos</option><option value="21600">6 horas</option>
+            </select>
+            <button class="btn btn-ghost" id="slowmode-btn" style="margin-top:.7rem">🐢 Aplicar modo lento</button>
           </div>
         </div>
       </section>
