@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configurar — JuliDev</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><span>💜</span> <strong>JuliDev</strong></div>
+      <a href="/servers" class="back-link">← Cambiar servidor</a>
+      <div class="guild-chip" id="guild-chip">
+        <div class="guild-icon" id="guild-icon">?</div>
+        <div class="guild-name" id="guild-name">…</div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-section="overview"><span>🏠</span> Inicio</a>
+        <a href="#" class="nav-item" data-section="channels"><span>📺</span> Canales</a>
+        <a href="#" class="nav-item" data-section="roles"><span>🛡️</span> Roles Staff</a>
+        <a href="#" class="nav-item" data-section="autorole"><span>👤</span> Auto Rol</a>
+        <a href="#" class="nav-item" data-section="welcome"><span>👋</span> Bienvenida</a>
+        <a href="#" class="nav-item" data-section="invites"><span>📨</span> Invitaciones</a>
+        <a href="#" class="nav-item" data-section="send"><span>✉️</span> Enviar mensaje</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip" id="user-chip">
+          <div class="user-avatar" id="user-avatar">?</div>
+          <div>
+            <div class="user-name" id="user-name">…</div>
+            <a href="/auth/logout" class="logout-link">Cerrar sesión</a>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1 id="page-title">Inicio</h1>
+        <button class="btn btn-primary" id="btn-save" style="display:none">💾 Guardar cambios</button>
+      </header>
+
+      <section class="section-panel active" id="section-overview">
+        <div class="cards-row">
+          <div class="stat-card"><div class="stat-label">Servidor</div><div class="stat-value" id="ov-name">—</div></div>
+          <div class="stat-card"><div class="stat-label">Miembros</div><div class="stat-value" id="ov-members">—</div></div>
+          <div class="stat-card"><div class="stat-label">En línea</div><div class="stat-value" id="ov-online">—</div></div>
+          <div class="stat-card"><div class="stat-label">Canales configurados</div><div class="stat-value" id="ov-channels">—</div></div>
+        </div>
+        <div class="info-box">
+          <h3>Personaliza tu servidor</h3>
+          <p>Todo lo que configures aquí es <strong>solo para este servidor</strong>. Puedes cambiar mensajes, roles, canales y enviar mensajes como el bot.</p>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-channels">
+        <p class="section-desc">Asigna los canales de <strong>tu servidor</strong> a cada función.</p>
+        <div class="form-grid" id="channels-form"></div>
+      </section>
+
+      <section class="section-panel" id="section-roles">
+        <p class="section-desc">Roles de <strong>tu servidor</strong> con permisos de staff.</p>
+        <div class="roles-list" id="staff-roles-list"></div>
+      </section>
+
+      <section class="section-panel" id="section-autorole">
+        <p class="section-desc">Elige qué rol se da automáticamente al entrar. Solo roles de este servidor.</p>
+        <div class="form-stack" style="max-width:420px">
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="autorole-enabled" style="accent-color:var(--primary);margin-right:0.4rem" />
+              Activar auto rol
+            </label>
+          </div>
+          <div class="form-group">
+            <label>Rol a dar al entrar</label>
+            <select id="autorole-select"><option value="">— Ninguno —</option></select>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-welcome">
+        <p class="section-desc">Personaliza el mensaje de bienvenida. Se envía al canal de Bienvenida.</p>
+        <div class="welcome-layout">
+          <div class="form-stack">
+            <div class="form-group">
+              <button type="button" class="btn btn-ghost" id="btn-test-welcome">🧪 Probar bienvenida en Discord</button>
+            </div>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="welcome-enabled" style="accent-color:var(--primary);margin-right:0.4rem" />
+                Activar bienvenida
+              </label>
+            </div>
+            <div class="form-group">
+              <label>Tipo</label>
+              <select id="welcome-type">
+                <option value="text">Solo texto</option>
+                <option value="embed">Embed (decorado)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Mensaje / descripción</label>
+              <div class="hint">Variables: <code>{user}</code> <code>{server}</code> <code>{count}</code> <code>{inviter}</code> — puedes usar **negrita**, emojis 🎉</div>
+              <textarea id="welcome-message" rows="6"></textarea>
+            </div>
+            <div class="form-group" id="welcome-embed-fields">
+              <label>Título del embed (opcional)</label>
+              <input type="text" id="welcome-title" class="text-input" placeholder="¡Bienvenido!" maxlength="256" />
+              <label style="margin-top:0.75rem">Color (hex)</label>
+              <input type="color" id="welcome-color" value="#9b59b6" style="width:100%;height:40px;border:none;background:transparent;cursor:pointer" />
+              <label style="margin-top:0.75rem">URL imagen grande (opcional)</label>
+              <input type="url" id="welcome-image" class="text-input" placeholder="https://..." />
+              <label style="margin-top:0.75rem">URL miniatura (opcional)</label>
+              <input type="url" id="welcome-thumb" class="text-input" placeholder="https://..." />
+            </div>
+          </div>
+          <div class="preview-col">
+            <label class="preview-label">Vista previa (cómo se verá)</label>
+            <div class="discord-preview" id="welcome-preview-box">
+              <div class="dp-bot">
+                <div class="dp-avatar">💜</div>
+                <div>
+                  <div class="dp-name">JuliDev <span class="dp-bot-tag">BOT</span></div>
+                  <div class="dp-content" id="wp-text"></div>
+                  <div class="dp-embed" id="wp-embed" style="display:none">
+                    <div class="dp-embed-bar" id="wp-bar"></div>
+                    <div class="dp-embed-body">
+                      <div class="dp-embed-title" id="wp-title"></div>
+                      <div class="dp-embed-desc" id="wp-desc"></div>
+                      <img class="dp-embed-img" id="wp-img" alt="" style="display:none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-invites">
+        <p class="section-desc">Log de quién invitó a cada miembro nuevo.</p>
+        <div class="form-group" style="max-width:400px">
+          <label>
+            <input type="checkbox" id="invites-enabled" style="accent-color:var(--primary);margin-right:0.4rem" />
+            Activar log de invitaciones
+          </label>
+          <p class="hint" style="margin-top:0.5rem">Se publica en el canal de Invitaciones. El bot necesita permiso «Gestionar servidor».</p>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-send">
+        <p class="section-desc">Envía un mensaje <strong>ahora</strong> como el bot a un canal de este servidor. Texto, embed, imagen…</p>
+        <div class="welcome-layout">
+          <div class="form-stack">
+            <div class="form-group">
+              <label>Canal</label>
+              <select id="send-channel"></select>
+            </div>
+            <div class="form-group">
+              <label>Texto del mensaje (opcional)</label>
+              <textarea id="send-content" rows="3" placeholder="Escribe aquí… puedes usar emojis 🎉"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Embed — título</label>
+              <input type="text" id="send-title" class="text-input" placeholder="Título" />
+            </div>
+            <div class="form-group">
+              <label>Embed — descripción</label>
+              <textarea id="send-desc" rows="4" placeholder="Descripción del embed…"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Color</label>
+              <input type="color" id="send-color" value="#9b59b6" style="width:100%;height:40px;border:none;background:transparent;cursor:pointer" />
+            </div>
+            <div class="form-group">
+              <label>URL imagen</label>
+              <input type="url" id="send-image" class="text-input" placeholder="https://..." />
+            </div>
+            <button class="btn btn-primary" id="btn-send-msg" type="button">✉️ Enviar como JuliDev</button>
+          </div>
+          <div class="preview-col">
+            <label class="preview-label">Vista previa</label>
+            <div class="discord-preview">
+              <div class="dp-bot">
+                <div class="dp-avatar">💜</div>
+                <div>
+                  <div class="dp-name">JuliDev <span class="dp-bot-tag">BOT</span></div>
+                  <div class="dp-content" id="sp-text"></div>
+                  <div class="dp-embed" id="sp-embed" style="display:none">
+                    <div class="dp-embed-bar" id="sp-bar"></div>
+                    <div class="dp-embed-body">
+                      <div class="dp-embed-title" id="sp-title"></div>
+                      <div class="dp-embed-desc" id="sp-desc"></div>
+                      <img class="dp-embed-img" id="sp-img" alt="" style="display:none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="/js/panel.js"></script>
+</body>
+</html>

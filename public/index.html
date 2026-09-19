@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JuliDev — Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="landing">
+  <nav class="top-nav">
+    <div class="brand"><span>💜</span> JuliDev</div>
+    <div class="top-nav-actions">
+      <a href="#como" class="link-muted">Cómo funciona</a>
+      <a href="/auth/login" class="btn btn-sm btn-primary">Entrar</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-badge">Panel de configuración</div>
+    <h1>Configura JuliDev<br /><span class="grad">en tu servidor</span></h1>
+    <p class="hero-sub">
+      Invita el bot, inicia sesión con Discord y elige el servidor.
+      Configura canales, roles y más — sin tocar código.
+    </p>
+    <div class="hero-btns">
+      <a id="invite-btn" href="#" class="btn btn-primary btn-lg" target="_blank" rel="noopener">
+        ➕ Invitar bot al servidor
+      </a>
+      <a href="/auth/login" class="btn btn-ghost btn-lg">
+        Ya lo invité → Entrar
+      </a>
+    </div>
+  </header>
+
+  <section id="como" class="steps-section">
+    <h2>Cómo funciona</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Invita el bot</h3>
+        <p>Pulsa “Invitar bot” y elige el servidor donde quieres usarlo. Dale permisos de administrador.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Inicia sesión</h3>
+        <p>Entra con tu cuenta de Discord. Solo verás servidores donde eres administrador.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Elige el servidor</h3>
+        <p>Selecciona el servidor (donde ya está el bot) y configura canales, roles staff, etc.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Guarda</h3>
+        <p>Guarda los cambios y exporta la config para el bot. ¡Listo!</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer-mini">
+    <p>💜 JuliDev · Hecho para comunidades de Discord</p>
+  </footer>
+
+  <script>
+    // Cargar invite URL dinámica
+    fetch('/api/me').then(r => r.json()).then(d => {
+      if (d.inviteUrl) document.getElementById('invite-btn').href = d.inviteUrl;
+      else document.getElementById('invite-btn').href = 'https://discord.com/oauth2/authorize?client_id=1421165831181570149&permissions=8&scope=bot%20applications.commands';
+      if (d.loggedIn) location.href = '/servers';
+    }).catch(() => {
+      document.getElementById('invite-btn').href = 'https://discord.com/oauth2/authorize?client_id=1421165831181570149&permissions=8&scope=bot%20applications.commands';
+    });
+
+    const err = new URLSearchParams(location.search).get('error');
+    if (err) {
+      const msgs = {
+        no_code: 'No se recibió autorización.',
+        token: 'Error de token. Revisa CLIENT_SECRET.',
+        oauth: 'Error al iniciar sesión con Discord.'
+      };
+      alert(msgs[err] || 'Error de autenticación');
+    }
+  </script>
+</body>
+</html>

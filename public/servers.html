@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elegir servidor — JuliDev</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="brand"><span>💜</span> JuliDev</div>
+    <div class="top-nav-actions">
+      <div class="user-mini" id="user-mini"></div>
+      <a href="/auth/logout" class="link-muted">Salir</a>
+    </div>
+  </nav>
+
+  <main class="servers-page">
+    <h1>Elige un servidor</h1>
+    <p class="page-sub">Solo aparecen servidores donde eres <strong>administrador</strong>. El bot debe estar invitado.</p>
+
+    <div class="servers-actions">
+      <a id="invite-link" href="#" class="btn btn-primary" target="_blank" rel="noopener">➕ Invitar bot a otro servidor</a>
+      <button class="btn btn-ghost" id="btn-refresh">🔄 Actualizar lista</button>
+    </div>
+
+    <div class="servers-grid" id="servers-grid">
+      <div class="loading">Cargando servidores…</div>
+    </div>
+  </main>
+
+  <script src="/js/servers.js"></script>
+</body>
+</html>
