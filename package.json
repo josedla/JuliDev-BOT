@@ -1,0 +1,15 @@
+{
+  "name": "julidev-dashboard",
+  "version": "2.0.0",
+  "description": "Panel multi-servidor estilo Koya/MEE6 para JuliDev",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "express-session": "^1.18.0",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^2.7.0"
+  }
+}
