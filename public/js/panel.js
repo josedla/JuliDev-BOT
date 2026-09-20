@@ -10,9 +10,14 @@ const CHANNEL_KEYS = [
   { key: 'ticketsCategory', label: 'Categoría Tickets', hint: 'Categoría de tickets' },
   { key: 'soportePublico', label: 'Soporte público', hint: 'Canal de soporte' },
   { key: 'baneados', label: 'Baneados', hint: 'Log de bans' },
-  { key: 'logs', label: 'Logs', hint: 'Logs de moderación' },
+  { key: 'logs', label: 'Logs generales', hint: 'Logs de moderación y eventos' },
   { key: 'logTickets', label: 'Logs tickets', hint: 'Logs de tickets' },
   { key: 'staffChat', label: 'Staff chat', hint: 'Chat del staff' },
+  { key: 'streaming', label: 'Streaming', hint: 'Avisos de streams' },
+  { key: 'eventos', label: 'Eventos', hint: 'Canal de eventos' },
+  { key: 'boosteos', label: 'Boosteos', hint: 'Agradecimiento de boosts' },
+  { key: 'multimedia', label: 'Multimedia', hint: 'Fotos / vídeos' },
+  { key: 'memes', label: 'Memes', hint: 'Canal de memes' },
 ];
 
 const DEFAULT_WELCOME =
@@ -195,7 +200,27 @@ async function init() {
       ...(cfg.welcome || {})
     },
     invites: { enabled: true, ...(cfg.invites || {}) },
-    botName: cfg.botName || 'JuliDev'
+    botName: cfg.botName || 'JuliDev',
+    automod: {
+      enabled: false,
+      spam: { enabled: false, maxMessages: 5, interval: 5, action: 'timeout', timeoutMinutes: 5 },
+      links: { enabled: false, action: 'delete', timeoutMinutes: 5, whitelist: [] },
+      words: { enabled: false, list: [], action: 'delete', timeoutMinutes: 10 },
+      mentions: { enabled: false, maxMentions: 5, action: 'timeout', timeoutMinutes: 10 },
+      caps: { enabled: false, percent: 70, minLength: 10, action: 'delete' },
+      invites: { enabled: false, action: 'delete' },
+      log: true,
+      ...(cfg.automod || {})
+    },
+    moderation: {
+      dmOnAction: true,
+      defaultReason: 'Incumplimiento de las reglas del servidor.',
+      logActions: true,
+      warnExpireDays: 30,
+      maxWarnsBeforeKick: 3,
+      maxWarnsBeforeBan: 5,
+      ...(cfg.moderation || {})
+    }
   };
 
   guildChannels = Array.isArray(channels) ? channels : [];
@@ -219,7 +244,160 @@ async function init() {
   renderWelcome();
   renderInvites();
   renderSend();
+  renderAutomod();
+  renderModerationSettings();
   setupNewTools();
+}
+
+// ─── AutoMod ───────────────────────────────────────────────
+function renderAutomod() {
+  const am = config.automod || {};
+  const set = (id, val, isCheck = false) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (isCheck) el.checked = !!val;
+    else el.value = val ?? '';
+  };
+
+  set('automod-enabled', am.enabled, true);
+  set('am-log', am.log !== false, true);
+
+  // Spam
+  set('am-spam-enabled', am.spam?.enabled, true);
+  set('am-spam-max', am.spam?.maxMessages ?? 5);
+  set('am-spam-interval', am.spam?.interval ?? 5);
+  set('am-spam-action', am.spam?.action ?? 'timeout');
+  set('am-spam-timeout', am.spam?.timeoutMinutes ?? 5);
+
+  // Links
+  set('am-links-enabled', am.links?.enabled, true);
+  set('am-links-action', am.links?.action ?? 'delete');
+  set('am-links-timeout', am.links?.timeoutMinutes ?? 5);
+  set('am-links-whitelist', (am.links?.whitelist || []).join(', '));
+
+  // Words
+  set('am-words-enabled', am.words?.enabled, true);
+  set('am-words-list', (am.words?.list || []).join('\n'));
+  set('am-words-action', am.words?.action ?? 'delete');
+  set('am-words-timeout', am.words?.timeoutMinutes ?? 10);
+
+  // Mentions
+  set('am-mentions-enabled', am.mentions?.enabled, true);
+  set('am-mentions-max', am.mentions?.maxMentions ?? 5);
+  set('am-mentions-action', am.mentions?.action ?? 'timeout');
+  set('am-mentions-timeout', am.mentions?.timeoutMinutes ?? 10);
+
+  // Caps
+  set('am-caps-enabled', am.caps?.enabled, true);
+  set('am-caps-percent', am.caps?.percent ?? 70);
+  set('am-caps-min', am.caps?.minLength ?? 10);
+  set('am-caps-action', am.caps?.action ?? 'delete');
+
+  // Invites
+  set('am-invites-enabled', am.invites?.enabled, true);
+  set('am-invites-action', am.invites?.action ?? 'delete');
+
+  // Listeners
+  const ids = [
+    'automod-enabled','am-log',
+    'am-spam-enabled','am-spam-max','am-spam-interval','am-spam-action','am-spam-timeout',
+    'am-links-enabled','am-links-action','am-links-timeout','am-links-whitelist',
+    'am-words-enabled','am-words-list','am-words-action','am-words-timeout',
+    'am-mentions-enabled','am-mentions-max','am-mentions-action','am-mentions-timeout',
+    'am-caps-enabled','am-caps-percent','am-caps-min','am-caps-action',
+    'am-invites-enabled','am-invites-action'
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => { collectAutomod(); markConfigDirty(); });
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+      el.addEventListener('input', () => { collectAutomod(); markConfigDirty(); });
+    }
+  });
+}
+
+function collectAutomod() {
+  const g = id => document.getElementById(id);
+  const val = id => g(id)?.value ?? '';
+  const checked = id => !!g(id)?.checked;
+  const num = (id, def) => Number(val(id)) || def;
+
+  config.automod = {
+    enabled: checked('automod-enabled'),
+    log: checked('am-log'),
+    spam: {
+      enabled: checked('am-spam-enabled'),
+      maxMessages: num('am-spam-max', 5),
+      interval: num('am-spam-interval', 5),
+      action: val('am-spam-action') || 'timeout',
+      timeoutMinutes: num('am-spam-timeout', 5)
+    },
+    links: {
+      enabled: checked('am-links-enabled'),
+      action: val('am-links-action') || 'delete',
+      timeoutMinutes: num('am-links-timeout', 5),
+      whitelist: val('am-links-whitelist').split(',').map(s => s.trim()).filter(Boolean)
+    },
+    words: {
+      enabled: checked('am-words-enabled'),
+      list: val('am-words-list').split('\n').map(s => s.trim()).filter(Boolean),
+      action: val('am-words-action') || 'delete',
+      timeoutMinutes: num('am-words-timeout', 10)
+    },
+    mentions: {
+      enabled: checked('am-mentions-enabled'),
+      maxMentions: num('am-mentions-max', 5),
+      action: val('am-mentions-action') || 'timeout',
+      timeoutMinutes: num('am-mentions-timeout', 10)
+    },
+    caps: {
+      enabled: checked('am-caps-enabled'),
+      percent: num('am-caps-percent', 70),
+      minLength: num('am-caps-min', 10),
+      action: val('am-caps-action') || 'delete'
+    },
+    invites: {
+      enabled: checked('am-invites-enabled'),
+      action: val('am-invites-action') || 'delete'
+    }
+  };
+}
+
+// ─── Moderación settings ───────────────────────────────────
+function renderModerationSettings() {
+  const m = config.moderation || {};
+  const set = (id, val, isCheck = false) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (isCheck) el.checked = !!val;
+    else el.value = val ?? '';
+  };
+
+  set('mod-dm', m.dmOnAction !== false, true);
+  set('mod-log', m.logActions !== false, true);
+  set('mod-default-reason', m.defaultReason || 'Incumplimiento de las reglas del servidor.');
+  set('mod-max-kick', m.maxWarnsBeforeKick ?? 3);
+  set('mod-max-ban', m.maxWarnsBeforeBan ?? 5);
+  set('mod-warn-expire', m.warnExpireDays ?? 30);
+
+  ['mod-dm','mod-log','mod-default-reason','mod-max-kick','mod-max-ban','mod-warn-expire'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => { collectModeration(); markConfigDirty(); });
+    if (el.tagName === 'INPUT') el.addEventListener('input', () => { collectModeration(); markConfigDirty(); });
+  });
+}
+
+function collectModeration() {
+  const g = id => document.getElementById(id);
+  config.moderation = {
+    dmOnAction: !!g('mod-dm')?.checked,
+    logActions: !!g('mod-log')?.checked,
+    defaultReason: g('mod-default-reason')?.value || 'Incumplimiento de las reglas del servidor.',
+    maxWarnsBeforeKick: Number(g('mod-max-kick')?.value) || 3,
+    maxWarnsBeforeBan: Number(g('mod-max-ban')?.value) || 5,
+    warnExpireDays: Number(g('mod-warn-expire')?.value) || 0
+  };
 }
 
 function channelOptions(selectedId) {
@@ -261,6 +439,10 @@ async function saveConfigToServer(showToast = false) {
   if (saveInFlight) return;
   saveInFlight = true;
   try {
+    // Recoger valores actuales de los formularios antes de guardar
+    if (typeof collectAutomod === 'function') collectAutomod();
+    if (typeof collectModeration === 'function') collectModeration();
+
     const res = await fetch(`/api/guild/${guildId}/config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

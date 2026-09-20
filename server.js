@@ -27,21 +27,86 @@ function loadGuildConfig(guildId) {
   if (fs.existsSync(p)) {
     try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) {}
   }
+  return getDefaultConfig();
+}
+
+function getDefaultConfig() {
   return {
     channels: {
       bienvenida: '', invitaciones: '', anuncios: '', encuestas: '',
       sorteos: '', chat: '', comandos: '', sugerencias: '',
       ticketsCategory: '', soportePublico: '', baneados: '',
-      logs: '', logTickets: '', staffChat: ''
+      logs: '', logTickets: '', staffChat: '',
+      streaming: '', eventos: '', boosteos: '', multimedia: '', memes: ''
     },
     staffRoles: [],
     autoRole: { enabled: false, roleId: '' },
     welcome: {
       enabled: true,
-      message: 'Hey {user}, bienvenido a **{server}**!\nContigo somos **{count}** miembros.\nInvitado por: {inviter}'
+      type: 'embed',
+      title: '👋 ¡Bienvenido!',
+      message: 'Hey {user}, gracias por unirte a **{server}**.\n\n**Contigo somos {count} miembros** 💜\n\n📨 Invitado por: {inviter}',
+      color: '#9b59b6',
+      image: '',
+      thumbnail: ''
     },
     invites: { enabled: true },
-    botName: 'JuliDev'
+    botName: 'JuliDev',
+    // ── AutoMod ──────────────────────────────────────
+    automod: {
+      enabled: false,
+      // Anti-spam
+      spam: {
+        enabled: false,
+        maxMessages: 5,       // mensajes
+        interval: 5,          // segundos
+        action: 'timeout',    // delete | timeout | kick | warn
+        timeoutMinutes: 5
+      },
+      // Anti-links
+      links: {
+        enabled: false,
+        action: 'delete',     // delete | timeout | warn
+        timeoutMinutes: 5,
+        whitelist: []         // dominios permitidos
+      },
+      // Palabras prohibidas
+      words: {
+        enabled: false,
+        list: [],
+        action: 'delete',
+        timeoutMinutes: 10
+      },
+      // Mass mentions
+      mentions: {
+        enabled: false,
+        maxMentions: 5,
+        action: 'timeout',
+        timeoutMinutes: 10
+      },
+      // Caps lock excesivo
+      caps: {
+        enabled: false,
+        percent: 70,          // % de mayúsculas
+        minLength: 10,
+        action: 'delete'
+      },
+      // Invites de otros servidores
+      invites: {
+        enabled: false,
+        action: 'delete'
+      },
+      log: true               // registrar en canal de logs
+    },
+    // ── Moderación ───────────────────────────────────
+    moderation: {
+      dmOnAction: true,       // enviar DM al usuario al castigar
+      defaultReason: 'Incumplimiento de las reglas del servidor.',
+      logActions: true,       // logear bans, kicks, warns, timeouts
+      warnExpireDays: 30,     // días para que un warn expire (0 = nunca)
+      maxWarnsBeforeKick: 3,
+      maxWarnsBeforeBan: 5
+    }
   };
 }
 

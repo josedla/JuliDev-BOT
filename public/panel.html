@@ -23,10 +23,11 @@
         <a href="#" class="nav-item" data-section="autorole"><span>👤</span> Auto Rol</a>
         <a href="#" class="nav-item" data-section="welcome"><span>👋</span> Bienvenida</a>
         <a href="#" class="nav-item" data-section="invites"><span>📨</span> Invitaciones</a>
+        <a href="#" class="nav-item" data-section="automod"><span>🤖</span> AutoMod</a>
+        <a href="#" class="nav-item" data-section="moderation"><span>🔨</span> Moderación</a>
         <a href="#" class="nav-item" data-section="send"><span>✉️</span> Enviar mensaje</a>
         <a href="#" class="nav-item" data-section="builder"><span>🧰</span> Crear cosas</a>
         <a href="#" class="nav-item" data-section="setup"><span>⚡</span> Setup rápido</a>
-        <a href="#" class="nav-item" data-section="moderation"><span>🛡️</span> Moderación</a>
         <a href="#" class="nav-item" data-section="tools"><span>⚙️</span> Herramientas</a>
       </nav>
       <div class="sidebar-footer">
@@ -249,20 +250,208 @@
         </div>
       </section>
 
-      <section class="section-panel" id="section-moderation">
-        <p class="section-desc">Acciones individuales de moderación para administradores. Se aplican directamente en Discord.</p>
-        <div class="form-stack" style="max-width:520px">
-          <div class="form-group"><label>ID del usuario</label><input id="mod-user" class="text-input" placeholder="123456789012345678" /></div>
-          <div class="form-group"><label>Razón (opcional)</label><input id="mod-reason" class="text-input" placeholder="Incumplimiento de las reglas" /></div>
-          <div class="form-group"><label>Minutos de timeout</label><input id="mod-minutes" type="number" class="text-input" min="1" max="40320" value="10" /></div>
-          <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-            <button class="btn btn-ghost" data-mod="timeout">⏳ Timeout</button>
-            <button class="btn btn-ghost" data-mod="untimeout">🔓 Quitar timeout</button>
-            <button class="btn btn-ghost" data-mod="kick">👢 Expulsar</button>
-            <button class="btn btn-ghost" data-mod="ban">🔨 Banear</button>
-            <button class="btn btn-ghost" data-mod="unban">♻️ Desbanear</button>
+      <!-- ═══════════════ AUTOMOD ═══════════════ -->
+      <section class="section-panel" id="section-automod">
+        <p class="section-desc">Protege tu servidor automáticamente. Las reglas se aplican a todos los mensajes.</p>
+
+        <div class="form-group" style="margin-bottom:1.2rem">
+          <label>
+            <input type="checkbox" id="automod-enabled" style="accent-color:var(--primary);margin-right:.4rem" />
+            <strong>Activar AutoMod</strong>
+          </label>
+        </div>
+
+        <div class="cards-row" style="flex-wrap:wrap;gap:1rem">
+
+          <!-- Anti-Spam -->
+          <div class="info-box" style="flex:1;min-width:280px">
+            <h3>🚫 Anti-Spam</h3>
+            <label><input type="checkbox" id="am-spam-enabled" style="accent-color:var(--primary);margin-right:.4rem" /> Activar</label>
+            <div class="form-group" style="margin-top:.6rem">
+              <label>Máx. mensajes</label>
+              <input type="number" id="am-spam-max" class="text-input" min="2" max="20" value="5" />
+            </div>
+            <div class="form-group">
+              <label>En (segundos)</label>
+              <input type="number" id="am-spam-interval" class="text-input" min="2" max="30" value="5" />
+            </div>
+            <div class="form-group">
+              <label>Acción</label>
+              <select id="am-spam-action" class="text-input">
+                <option value="delete">Borrar mensajes</option>
+                <option value="timeout">Timeout</option>
+                <option value="kick">Expulsar</option>
+                <option value="warn">Warn</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Minutos de timeout</label>
+              <input type="number" id="am-spam-timeout" class="text-input" min="1" max="1440" value="5" />
+            </div>
           </div>
-          <p class="hint">Confirma la acción antes de ejecutarla. Necesita los permisos correspondientes del bot.</p>
+
+          <!-- Anti-Links -->
+          <div class="info-box" style="flex:1;min-width:280px">
+            <h3>🔗 Anti-Links</h3>
+            <label><input type="checkbox" id="am-links-enabled" style="accent-color:var(--primary);margin-right:.4rem" /> Activar</label>
+            <div class="form-group" style="margin-top:.6rem">
+              <label>Acción</label>
+              <select id="am-links-action" class="text-input">
+                <option value="delete">Borrar mensaje</option>
+                <option value="timeout">Timeout</option>
+                <option value="warn">Warn</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Minutos de timeout</label>
+              <input type="number" id="am-links-timeout" class="text-input" min="1" max="1440" value="5" />
+            </div>
+            <div class="form-group">
+              <label>Dominios permitidos (separados por coma)</label>
+              <input type="text" id="am-links-whitelist" class="text-input" placeholder="youtube.com, discord.com, twitter.com" />
+            </div>
+          </div>
+
+          <!-- Bad Words -->
+          <div class="info-box" style="flex:1;min-width:280px">
+            <h3>🤬 Palabras prohibidas</h3>
+            <label><input type="checkbox" id="am-words-enabled" style="accent-color:var(--primary);margin-right:.4rem" /> Activar</label>
+            <div class="form-group" style="margin-top:.6rem">
+              <label>Lista de palabras (una por línea)</label>
+              <textarea id="am-words-list" class="text-input" rows="4" placeholder="palabra1&#10;palabra2&#10;insulto"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Acción</label>
+              <select id="am-words-action" class="text-input">
+                <option value="delete">Borrar mensaje</option>
+                <option value="timeout">Timeout</option>
+                <option value="warn">Warn</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Minutos de timeout</label>
+              <input type="number" id="am-words-timeout" class="text-input" min="1" max="1440" value="10" />
+            </div>
+          </div>
+
+          <!-- Mass Mentions -->
+          <div class="info-box" style="flex:1;min-width:280px">
+            <h3>📢 Anti Mass-Mentions</h3>
+            <label><input type="checkbox" id="am-mentions-enabled" style="accent-color:var(--primary);margin-right:.4rem" /> Activar</label>
+            <div class="form-group" style="margin-top:.6rem">
+              <label>Máximo de menciones</label>
+              <input type="number" id="am-mentions-max" class="text-input" min="2" max="20" value="5" />
+            </div>
+            <div class="form-group">
+              <label>Acción</label>
+              <select id="am-mentions-action" class="text-input">
+                <option value="delete">Borrar mensaje</option>
+                <option value="timeout">Timeout</option>
+                <option value="warn">Warn</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Minutos de timeout</label>
+              <input type="number" id="am-mentions-timeout" class="text-input" min="1" max="1440" value="10" />
+            </div>
+          </div>
+
+          <!-- Caps -->
+          <div class="info-box" style="flex:1;min-width:280px">
+            <h3>🔠 Anti Caps</h3>
+            <label><input type="checkbox" id="am-caps-enabled" style="accent-color:var(--primary);margin-right:.4rem" /> Activar</label>
+            <div class="form-group" style="margin-top:.6rem">
+              <label>% de mayúsculas</label>
+              <input type="number" id="am-caps-percent" class="text-input" min="40" max="100" value="70" />
+            </div>
+            <div class="form-group">
+              <label>Longitud mínima del mensaje</label>
+              <input type="number" id="am-caps-min" class="text-input" min="5" max="100" value="10" />
+            </div>
+            <div class="form-group">
+              <label>Acción</label>
+              <select id="am-caps-action" class="text-input">
+                <option value="delete">Borrar mensaje</option>
+                <option value="timeout">Timeout</option>
+                <option value="warn">Warn</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Discord Invites -->
+          <div class="info-box" style="flex:1;min-width:280px">
+            <h3>📨 Anti Invites</h3>
+            <label><input type="checkbox" id="am-invites-enabled" style="accent-color:var(--primary);margin-right:.4rem" /> Bloquear invitaciones de otros servidores</label>
+            <div class="form-group" style="margin-top:.6rem">
+              <label>Acción</label>
+              <select id="am-invites-action" class="text-input">
+                <option value="delete">Borrar mensaje</option>
+                <option value="timeout">Timeout</option>
+                <option value="warn">Warn</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:1.2rem">
+          <label>
+            <input type="checkbox" id="am-log" style="accent-color:var(--primary);margin-right:.4rem" checked />
+            Registrar acciones de AutoMod en el canal de Logs
+          </label>
+        </div>
+      </section>
+
+      <!-- ═══════════════ MODERACIÓN ═══════════════ -->
+      <section class="section-panel" id="section-moderation">
+        <p class="section-desc">Configuración de moderación y acciones manuales.</p>
+
+        <div class="cards-row" style="flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+          <div class="info-box" style="flex:1;min-width:280px">
+            <h3>⚙️ Ajustes de moderación</h3>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="mod-dm" style="accent-color:var(--primary);margin-right:.4rem" />
+                Enviar DM al usuario cuando se le castiga
+              </label>
+            </div>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="mod-log" style="accent-color:var(--primary);margin-right:.4rem" checked />
+                Registrar acciones en el canal de Logs
+              </label>
+            </div>
+            <div class="form-group">
+              <label>Razón por defecto</label>
+              <input type="text" id="mod-default-reason" class="text-input" placeholder="Incumplimiento de las reglas del servidor." />
+            </div>
+            <div class="form-group">
+              <label>Warns antes de kick automático</label>
+              <input type="number" id="mod-max-kick" class="text-input" min="0" max="20" value="3" />
+            </div>
+            <div class="form-group">
+              <label>Warns antes de ban automático</label>
+              <input type="number" id="mod-max-ban" class="text-input" min="0" max="30" value="5" />
+            </div>
+            <div class="form-group">
+              <label>Días para que un warn expire (0 = nunca)</label>
+              <input type="number" id="mod-warn-expire" class="text-input" min="0" max="365" value="30" />
+            </div>
+          </div>
+
+          <div class="info-box" style="flex:1;min-width:280px">
+            <h3>🔨 Acciones manuales</h3>
+            <p class="hint" style="margin-bottom:.8rem">Ejecuta acciones de moderación directamente desde el panel.</p>
+            <div class="form-group"><label>ID del usuario</label><input id="mod-user" class="text-input" placeholder="123456789012345678" /></div>
+            <div class="form-group"><label>Razón (opcional)</label><input id="mod-reason" class="text-input" placeholder="Incumplimiento de las reglas" /></div>
+            <div class="form-group"><label>Minutos de timeout</label><input id="mod-minutes" type="number" class="text-input" min="1" max="40320" value="10" /></div>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.5rem">
+              <button class="btn btn-ghost" data-mod="timeout">⏳ Timeout</button>
+              <button class="btn btn-ghost" data-mod="untimeout">🔓 Quitar timeout</button>
+              <button class="btn btn-ghost" data-mod="kick">👢 Expulsar</button>
+              <button class="btn btn-ghost" data-mod="ban">🔨 Banear</button>
+              <button class="btn btn-ghost" data-mod="unban">♻️ Desbanear</button>
+            </div>
+          </div>
         </div>
       </section>
 
