@@ -819,6 +819,41 @@ app.post('/api/guild/:id/send', requireAuth, async (req, res) => {
   }
 });
 
+
+app.get('/api/invite', (req, res) => {
+  res.json({ url: INVITE_URL, clientId: CLIENT_ID });
+});
+
+app.get('/api/guild/:id/stats', requireAuth, async (req, res) => {
+  if (!adminGuild(req, res, req.params.id)) return;
+  const guildId = req.params.id;
+  try {
+    const g = await discordApi(`/guilds/${guildId}?with_counts=true`);
+    const channels = await discordApi(`/guilds/${guildId}/channels`).catch(() => []);
+    const roles = await discordApi(`/guilds/${guildId}/roles`).catch(() => []);
+    const cfg = loadGuildConfig(guildId);
+    res.json({
+      name: g.name,
+      memberCount: g.approximate_member_count || g.member_count || 0,
+      channels: Array.isArray(channels) ? channels.length : 0,
+      roles: Array.isArray(roles) ? roles.length : 0,
+      features: {
+        welcome: !!(cfg.welcome?.enabled),
+        leave: !!(cfg.leave?.enabled),
+        automod: !!(cfg.automod?.enabled),
+        levels: !!(cfg.levels?.enabled),
+        economy: !!(cfg.economy?.enabled),
+        starboard: !!(cfg.starboard?.enabled),
+        customCommands: (cfg.customCommands || []).length,
+        reactionRoles: (cfg.reactionRoles || []).length,
+        autoReplies: (cfg.autoReplies || []).length
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Páginas ─────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

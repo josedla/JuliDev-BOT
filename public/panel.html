@@ -18,26 +18,32 @@
       </div>
       <nav class="sidebar-nav">
         <a href="#" class="nav-item active" data-section="overview"><span>🏠</span> Inicio</a>
+        <a href="#" class="nav-item" data-section="commands"><span>⚡</span> 100 Comandos</a>
+        <div class="nav-label">Servidor</div>
         <a href="#" class="nav-item" data-section="channels"><span>📺</span> Canales</a>
         <a href="#" class="nav-item" data-section="roles"><span>🛡️</span> Roles Staff</a>
         <a href="#" class="nav-item" data-section="autorole"><span>👤</span> Auto Rol</a>
+        <div class="nav-label">Mensajes</div>
         <a href="#" class="nav-item" data-section="welcome"><span>👋</span> Bienvenida</a>
+        <a href="#" class="nav-item" data-section="leave"><span>🚪</span> Despedida</a>
         <a href="#" class="nav-item" data-section="invites"><span>📨</span> Invitaciones</a>
+        <a href="#" class="nav-item" data-section="send"><span>✉️</span> Enviar mensaje</a>
+        <div class="nav-label">Moderación</div>
         <a href="#" class="nav-item" data-section="automod"><span>🤖</span> AutoMod</a>
         <a href="#" class="nav-item" data-section="moderation"><span>🔨</span> Moderación</a>
-        <a href="#" class="nav-item" data-section="send"><span>✉️</span> Enviar mensaje</a>
-        <a href="#" class="nav-item" data-section="leave"><span>🚪</span> Despedida</a>
-        <a href="#" class="nav-item" data-section="customcmds"><span>💬</span> Cmds personalizados</a>
-        <a href="#" class="nav-item" data-section="reactionroles"><span>⭐</span> Reaction Roles</a>
+        <a href="#" class="nav-item" data-section="logging"><span>📜</span> Logs</a>
+        <div class="nav-label">Sistemas</div>
         <a href="#" class="nav-item" data-section="levels"><span>📈</span> Niveles / XP</a>
         <a href="#" class="nav-item" data-section="economy"><span>💰</span> Economía</a>
         <a href="#" class="nav-item" data-section="starboard"><span>✨</span> Starboard</a>
         <a href="#" class="nav-item" data-section="ticketscfg"><span>🎫</span> Tickets</a>
-        <a href="#" class="nav-item" data-section="logging"><span>📜</span> Logs detallados</a>
-        <a href="#" class="nav-item" data-section="autoreplies"><span>🤖</span> Auto-respuestas</a>
+        <a href="#" class="nav-item" data-section="reactionroles"><span>⭐</span> Reaction Roles</a>
+        <a href="#" class="nav-item" data-section="customcmds"><span>💬</span> Cmds custom</a>
+        <a href="#" class="nav-item" data-section="autoreplies"><span>💬</span> Auto-respuestas</a>
+        <div class="nav-label">Herramientas</div>
         <a href="#" class="nav-item" data-section="builder"><span>🧰</span> Crear cosas</a>
         <a href="#" class="nav-item" data-section="setup"><span>⚡</span> Setup rápido</a>
-        <a href="#" class="nav-item" data-section="tools"><span>⚙️</span> Herramientas</a>
+        <a href="#" class="nav-item" data-section="tools"><span>⚙️</span> Ajustes</a>
       </nav>
       <div class="sidebar-footer">
         <div class="user-chip" id="user-chip">
@@ -56,7 +62,62 @@
         <button class="btn btn-primary" id="btn-save" style="display:none">💾 Guardar cambios</button>
       </header>
 
+      
+      <section class="section-panel" id="section-commands">
+        <p class="section-desc">Los <strong>100 comandos slash</strong> del bot. Activa niveles y economía en sus secciones para usar <code>/eco</code> y <code>/level</code>.</p>
+        <div class="info-box" style="margin-bottom:1rem">
+          <h3>🛡️ Moderación</h3>
+          <div class="cmd-grid" style="margin-top:.7rem">
+            <span class="cmd-chip">/ban</span><span class="cmd-chip">/unban</span><span class="cmd-chip">/softban</span>
+            <span class="cmd-chip">/kick</span><span class="cmd-chip">/timeout</span><span class="cmd-chip">/unmute</span>
+            <span class="cmd-chip">/clear</span><span class="cmd-chip">/purge</span><span class="cmd-chip">/warn</span>
+            <span class="cmd-chip">/warns</span><span class="cmd-chip">/unwarn</span><span class="cmd-chip">/lock</span>
+            <span class="cmd-chip">/unlock</span><span class="cmd-chip">/lockdown</span><span class="cmd-chip">/nick</span>
+            <span class="cmd-chip">/role</span><span class="cmd-chip">/move</span><span class="cmd-chip">/disconnect</span>
+          </div>
+        </div>
+        <div class="info-box" style="margin-bottom:1rem">
+          <h3>💰 Economía &amp; 📈 Niveles</h3>
+          <div class="cmd-grid" style="margin-top:.7rem">
+            <span class="cmd-chip">/eco balance</span><span class="cmd-chip">/eco daily</span><span class="cmd-chip">/eco work</span>
+            <span class="cmd-chip">/eco pay</span><span class="cmd-chip">/eco top</span>
+            <span class="cmd-chip">/level rank</span><span class="cmd-chip">/level leaderboard</span>
+          </div>
+        </div>
+        <div class="info-box" style="margin-bottom:1rem">
+          <h3>🛠️ Utilidad</h3>
+          <div class="cmd-grid" style="margin-top:.7rem">
+            <span class="cmd-chip">/ping</span><span class="cmd-chip">/help</span><span class="cmd-chip">/botinfo</span>
+            <span class="cmd-chip">/serverinfo</span><span class="cmd-chip">/userinfo</span><span class="cmd-chip">/avatar</span>
+            <span class="cmd-chip">/banner</span><span class="cmd-chip">/snipe</span><span class="cmd-chip">/afk</span>
+            <span class="cmd-chip">/remind</span><span class="cmd-chip">/calc</span><span class="cmd-chip">/weather</span>
+            <span class="cmd-chip">/github</span><span class="cmd-chip">/timestamp</span><span class="cmd-chip">/base64</span>
+            <span class="cmd-chip">/jumbo</span><span class="cmd-chip">/emoji</span><span class="cmd-chip">/steal</span>
+          </div>
+        </div>
+        <div class="info-box">
+          <h3>🎉 Diversión</h3>
+          <div class="cmd-grid" style="margin-top:.7rem">
+            <span class="cmd-chip">/meme</span><span class="cmd-chip">/animal</span><span class="cmd-chip">/8ball</span>
+            <span class="cmd-chip">/ship</span><span class="cmd-chip">/quote</span><span class="cmd-chip">/roast</span>
+            <span class="cmd-chip">/rps</span><span class="cmd-chip">/coinflip</span><span class="cmd-chip">/dado</span>
+          </div>
+        </div>
+      </section>
+
       <section class="section-panel active" id="section-overview">
+        <div class="stat-grid" id="overview-stats">
+          <div class="stat-card"><div class="stat-val" id="st-members">—</div><div class="stat-label">Miembros</div></div>
+          <div class="stat-card"><div class="stat-val" id="st-channels">—</div><div class="stat-label">Canales</div></div>
+          <div class="stat-card"><div class="stat-val" id="st-roles">—</div><div class="stat-label">Roles</div></div>
+          <div class="stat-card"><div class="stat-val">100</div><div class="stat-label">Comandos</div></div>
+        </div>
+        <div class="cards-row" id="feature-status" style="margin-bottom:1.5rem">
+          <div class="info-box"><h3>Estado de sistemas</h3>
+            <p id="feat-list" class="hint">Cargando…</p>
+          </div>
+        </div>
+
         <div class="cards-row">
           <div class="stat-card"><div class="stat-label">Servidor</div><div class="stat-value" id="ov-name">—</div></div>
           <div class="stat-card"><div class="stat-label">Miembros</div><div class="stat-value" id="ov-members">—</div></div>

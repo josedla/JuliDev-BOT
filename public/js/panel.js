@@ -285,7 +285,8 @@ async function init() {
   renderSend();
   renderAutomod();
   renderModerationSettings();
-  try { renderAllNewSections(); } catch(e) { console.error(e); };
+  try { renderAllNewSections(); } catch(e) { console.error(e); }
+  try { loadOverviewStats(); } catch(e) {};
   setupNewTools();
 }
 
@@ -1001,4 +1002,27 @@ function renderAllNewSections() {
 
 // Hook into existing init flow: call after first paint
 const _origInit = typeof init === 'function' ? init : null;
+
+
+
+async function loadOverviewStats() {
+  try {
+    const r = await fetch(`/api/guild/${guildId}/stats`, { credentials: 'include' });
+    if (!r.ok) return;
+    const d = await r.json();
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('st-members', d.memberCount?.toLocaleString?.() || d.memberCount || '—');
+    set('st-channels', d.channels ?? '—');
+    set('st-roles', d.roles ?? '—');
+    const f = d.features || {};
+    const items = [
+      ['Bienvenida', f.welcome], ['Despedida', f.leave], ['AutoMod', f.automod],
+      ['Niveles', f.levels], ['Economía', f.economy], ['Starboard', f.starboard],
+      [`Cmds custom (${f.customCommands||0})`, f.customCommands > 0],
+      [`Reaction roles (${f.reactionRoles||0})`, f.reactionRoles > 0]
+    ];
+    const el = document.getElementById('feat-list');
+    if (el) el.innerHTML = items.map(([n, on]) => `${on ? '🟢' : '⚪'} ${n}`).join(' · ');
+  } catch (e) { console.error(e); }
+}
 
