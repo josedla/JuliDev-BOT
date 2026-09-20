@@ -575,6 +575,41 @@ async function syncConfigToBot(guildId, cfg) {
   }
 }
 
+// ── El BOT puede enviar config aquí (después de /setup) ─────
+// POST /internal/bot-config/:guildId
+// Header: Authorization: Bearer PANEL_SYNC_SECRET
+app.post('/internal/bot-config/:guildId', express.json({ limit: '1mb' }), (req, res) => {
+  const secret = process.env.PANEL_SYNC_SECRET || '';
+  const auth = String(req.headers.authorization || '');
+  if (!secret || auth !== `Bearer ${secret}`) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+  const guildId = req.params.guildId;
+  if (!/^\d{17,20}$/.test(guildId)) {
+    return res.status(400).json({ error: 'guildId inválido' });
+  }
+  try {
+    const current = loadGuildConfig(guildId);
+    const body = req.body || {};
+    const updated = {
+      ...current,
+      ...body,
+      channels: { ...(current.channels || {}), ...(body.channels || {}) },
+      staffRoles: Array.isArray(body.staffRoles) ? body.staffRoles : (current.staffRoles || []),
+      roles: { ...(current.roles || {}), ...(body.roles || {}) },
+      categories: { ...(current.categories || {}), ...(body.categories || {}) },
+      autoRole: body.autoRole !== undefined ? body.autoRole : current.autoRole,
+      welcome: body.welcome !== undefined ? { ...current.welcome, ...body.welcome } : current.welcome
+    };
+    saveGuildConfig(guildId, updated);
+    console.log(`[bot→panel] Config recibida de /setup para guild ${guildId}`);
+    res.json({ success: true, guildId });
+  } catch (e) {
+    console.error('[bot→panel]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Config del servidor
 app.get('/api/guild/:id/config', requireAuth, (req, res) => {
   if (!adminGuild(req, res, req.params.id)) return;
