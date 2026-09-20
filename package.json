@@ -1,7 +1,7 @@
 {
   "name": "julidev-dashboard",
-  "version": "3.0.0",
-  "description": "Panel multi-servidor estilo Koya/MEE6 para JuliDev con persistencia y constructor",
+  "version": "2.0.0",
+  "description": "Panel multi-servidor estilo Koya/MEE6 para JuliDev",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

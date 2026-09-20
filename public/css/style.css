@@ -183,12 +183,3 @@ code{background:rgba(155,89,182,.15);color:var(--primary-light);padding:.12em .4
 .info-box ul { margin: .7rem 0; padding-left: 1.2rem; color: var(--text-muted); }
 .info-box li { margin: .25rem 0; }
 .cards-row .info-box { flex: 1; min-width: 280px; }
-
-/* Apps / advanced dashboard */
-.app-card{min-width:280px}
-.app-card>select,.app-card>input:not([type="checkbox"]){width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.88rem;padding:.5rem .7rem;border-radius:8px;outline:none}
-.app-card>select:focus,.app-card>input:focus{border-color:var(--primary)}
-.mini-list{margin-top:.7rem;display:flex;flex-direction:column;gap:.4rem;max-height:150px;overflow:auto}
-.mini-item{display:flex;align-items:center;gap:.45rem;padding:.45rem .55rem;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:.78rem}
-.mini-item code{color:var(--primary-light);font-weight:700}.mini-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted)}
-.mini-item button{border:0;background:transparent;color:var(--danger);font-size:1.1rem;cursor:pointer}
