@@ -26,6 +26,15 @@
         <a href="#" class="nav-item" data-section="automod"><span>🤖</span> AutoMod</a>
         <a href="#" class="nav-item" data-section="moderation"><span>🔨</span> Moderación</a>
         <a href="#" class="nav-item" data-section="send"><span>✉️</span> Enviar mensaje</a>
+        <a href="#" class="nav-item" data-section="leave"><span>🚪</span> Despedida</a>
+        <a href="#" class="nav-item" data-section="customcmds"><span>💬</span> Cmds personalizados</a>
+        <a href="#" class="nav-item" data-section="reactionroles"><span>⭐</span> Reaction Roles</a>
+        <a href="#" class="nav-item" data-section="levels"><span>📈</span> Niveles / XP</a>
+        <a href="#" class="nav-item" data-section="economy"><span>💰</span> Economía</a>
+        <a href="#" class="nav-item" data-section="starboard"><span>✨</span> Starboard</a>
+        <a href="#" class="nav-item" data-section="ticketscfg"><span>🎫</span> Tickets</a>
+        <a href="#" class="nav-item" data-section="logging"><span>📜</span> Logs detallados</a>
+        <a href="#" class="nav-item" data-section="autoreplies"><span>🤖</span> Auto-respuestas</a>
         <a href="#" class="nav-item" data-section="builder"><span>🧰</span> Crear cosas</a>
         <a href="#" class="nav-item" data-section="setup"><span>⚡</span> Setup rápido</a>
         <a href="#" class="nav-item" data-section="tools"><span>⚙️</span> Herramientas</a>
@@ -454,6 +463,118 @@
           </div>
         </div>
       </section>
+
+
+      <section class="section-panel" id="section-leave">
+        <p class="section-desc">Mensaje cuando un miembro sale del servidor. Variables: <code>{user}</code> <code>{server}</code> <code>{count}</code></p>
+        <div class="form-group"><label><input type="checkbox" id="leave-enabled" /> Activar despedida</label></div>
+        <div class="form-group"><label>Canal (vacío = canal de bienvenida)</label><select id="leave-channel" class="text-input channel-select"><option value="">— Usar bienvenida —</option></select></div>
+        <div class="form-group"><label>Tipo</label><select id="leave-type" class="text-input"><option value="text">Texto</option><option value="embed">Embed</option></select></div>
+        <div class="form-group"><label>Título</label><input id="leave-title" class="text-input" maxlength="256" /></div>
+        <div class="form-group"><label>Mensaje</label><textarea id="leave-message" rows="4"></textarea></div>
+        <div class="form-group"><label>Color</label><input type="color" id="leave-color" value="#ed4245" style="width:100%;height:40px;border:none;background:transparent" /></div>
+      </section>
+
+      <section class="section-panel" id="section-customcmds">
+        <p class="section-desc">Respuestas personalizadas con prefijo <code>!</code>. Ej: escribe <code>!reglas</code> y el bot responde. Variables: <code>{user}</code> <code>{server}</code> <code>{count}</code></p>
+        <div id="customcmds-list"></div>
+        <div class="info-box" style="margin-top:1rem">
+          <h3>Añadir comando</h3>
+          <div class="form-group"><label>Trigger (sin !)</label><input id="cc-trigger" class="text-input" placeholder="reglas" /></div>
+          <div class="form-group"><label>Respuesta</label><textarea id="cc-response" rows="3" placeholder="Las reglas son..."></textarea></div>
+          <button class="btn btn-primary" id="cc-add">➕ Añadir</button>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-reactionroles">
+        <p class="section-desc">Asigna roles al reaccionar a un mensaje. Crea el mensaje primero y pega el ID del mensaje y el emoji.</p>
+        <div id="rr-list"></div>
+        <div class="info-box" style="margin-top:1rem">
+          <h3>Añadir reaction role</h3>
+          <div class="form-group"><label>ID del mensaje</label><input id="rr-message" class="text-input" placeholder="ID del mensaje" /></div>
+          <div class="form-group"><label>Canal del mensaje</label><select id="rr-channel" class="text-input channel-select"></select></div>
+          <div class="form-group"><label>Emoji (unicode o nombre:id)</label><input id="rr-emoji" class="text-input" placeholder="⭐ o :custom:123" /></div>
+          <div class="form-group"><label>Rol a dar</label><select id="rr-role" class="text-input role-select"></select></div>
+          <button class="btn btn-primary" id="rr-add">➕ Añadir</button>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-levels">
+        <p class="section-desc">Sistema de niveles por mensajes (estilo Mee6). XP aleatorio por mensaje con cooldown.</p>
+        <div class="form-group"><label><input type="checkbox" id="levels-enabled" /> Activar niveles</label></div>
+        <div class="form-group"><label><input type="checkbox" id="levels-announce" /> Anunciar level-up</label></div>
+        <div class="form-group"><label>Canal de level-up (vacío = mismo canal)</label><select id="levels-channel" class="text-input channel-select"><option value="">— Mismo canal —</option></select></div>
+        <div class="form-group"><label>XP mínimo por mensaje</label><input type="number" id="levels-xpmin" class="text-input" min="1" value="15" /></div>
+        <div class="form-group"><label>XP máximo por mensaje</label><input type="number" id="levels-xpmax" class="text-input" min="1" value="25" /></div>
+        <div class="form-group"><label>Cooldown (segundos)</label><input type="number" id="levels-cd" class="text-input" min="5" value="60" /></div>
+        <div class="form-group"><label>Mensaje level-up</label><input id="levels-msg" class="text-input" placeholder="🎉 {user} subió a nivel {level}!" /></div>
+        <div class="form-group"><label><input type="checkbox" id="levels-stack" checked /> Acumular roles de nivel</label></div>
+        <div class="info-box"><h3>Roles por nivel</h3><div id="level-roles-list"></div>
+          <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
+            <input type="number" id="lr-level" class="text-input" placeholder="Nivel" min="1" style="max-width:100px" />
+            <select id="lr-role" class="text-input role-select" style="flex:1"></select>
+            <button class="btn btn-primary" id="lr-add">➕</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-economy">
+        <p class="section-desc">Economía simple: daily, work, balance, pay. Comandos del bot: /balance /daily /work /pay /baltop</p>
+        <div class="form-group"><label><input type="checkbox" id="eco-enabled" /> Activar economía</label></div>
+        <div class="form-group"><label>Nombre de moneda</label><input id="eco-currency" class="text-input" value="monedas" /></div>
+        <div class="form-group"><label>Daily min / max</label>
+          <div style="display:flex;gap:.5rem"><input type="number" id="eco-dmin" class="text-input" value="100" /><input type="number" id="eco-dmax" class="text-input" value="300" /></div>
+        </div>
+        <div class="form-group"><label>Work min / max</label>
+          <div style="display:flex;gap:.5rem"><input type="number" id="eco-wmin" class="text-input" value="50" /><input type="number" id="eco-wmax" class="text-input" value="150" /></div>
+        </div>
+        <div class="form-group"><label>Cooldown work (minutos)</label><input type="number" id="eco-wcd" class="text-input" value="30" /></div>
+        <div class="form-group"><label>Balance inicial</label><input type="number" id="eco-start" class="text-input" value="0" /></div>
+      </section>
+
+      <section class="section-panel" id="section-starboard">
+        <p class="section-desc">Cuando un mensaje recibe X estrellas, se publica en el canal starboard.</p>
+        <div class="form-group"><label><input type="checkbox" id="sb-enabled" /> Activar starboard</label></div>
+        <div class="form-group"><label>Canal starboard</label><select id="sb-channel" class="text-input channel-select"></select></div>
+        <div class="form-group"><label>Emoji</label><input id="sb-emoji" class="text-input" value="⭐" /></div>
+        <div class="form-group"><label>Mínimo de estrellas</label><input type="number" id="sb-min" class="text-input" min="1" value="3" /></div>
+        <div class="form-group"><label><input type="checkbox" id="sb-self" /> Permitir auto-estrella</label></div>
+      </section>
+
+      <section class="section-panel" id="section-ticketscfg">
+        <p class="section-desc">Opciones extra del sistema de tickets (el panel de tickets se crea con /ticketpanel).</p>
+        <div class="form-group"><label>Máx tickets abiertos por usuario</label><input type="number" id="tk-max" class="text-input" min="1" max="10" value="3" /></div>
+        <div class="form-group"><label>Mensaje de bienvenida en el ticket</label><textarea id="tk-welcome" rows="3"></textarea></div>
+        <div class="form-group"><label><input type="checkbox" id="tk-closeleave" /> Cerrar tickets si el usuario sale del servidor</label></div>
+      </section>
+
+      <section class="section-panel" id="section-logging">
+        <p class="section-desc">Elige qué eventos se registran en el canal de logs. Requiere canal Logs configurado.</p>
+        <div class="cards-row">
+          <label><input type="checkbox" id="log-msgdel" checked /> Mensajes borrados</label>
+          <label><input type="checkbox" id="log-msgedit" checked /> Mensajes editados</label>
+          <label><input type="checkbox" id="log-join" checked /> Entradas</label>
+          <label><input type="checkbox" id="log-leave" checked /> Salidas</label>
+          <label><input type="checkbox" id="log-roles" checked /> Roles de miembros</label>
+          <label><input type="checkbox" id="log-bans" checked /> Bans</label>
+          <label><input type="checkbox" id="log-channels" checked /> Canales</label>
+          <label><input type="checkbox" id="log-roles2" checked /> Roles del server</label>
+          <label><input type="checkbox" id="log-voice" /> Voz</label>
+          <label><input type="checkbox" id="log-nicks" checked /> Apodos</label>
+        </div>
+      </section>
+
+      <section class="section-panel" id="section-autoreplies">
+        <p class="section-desc">Si un mensaje contiene la palabra clave, el bot responde automáticamente (sin prefijo).</p>
+        <div id="ar-list"></div>
+        <div class="info-box" style="margin-top:1rem">
+          <h3>Añadir auto-respuesta</h3>
+          <div class="form-group"><label>Palabra clave</label><input id="ar-key" class="text-input" placeholder="hola" /></div>
+          <div class="form-group"><label>Respuesta</label><textarea id="ar-resp" rows="2"></textarea></div>
+          <button class="btn btn-primary" id="ar-add">➕ Añadir</button>
+        </div>
+      </section>
+
 
       <section class="section-panel" id="section-tools">
         <p class="section-desc">Herramientas rápidas para administrar el servidor.</p>

@@ -37,7 +37,8 @@ function getDefaultConfig() {
       sorteos: '', chat: '', comandos: '', sugerencias: '',
       ticketsCategory: '', soportePublico: '', baneados: '',
       logs: '', logTickets: '', staffChat: '',
-      streaming: '', eventos: '', boosteos: '', multimedia: '', memes: ''
+      streaming: '', eventos: '', boosteos: '', multimedia: '', memes: '',
+      despedida: '', starboard: '', levelup: '', economia: ''
     },
     staffRoles: [],
     autoRole: { enabled: false, roleId: '' },
@@ -100,13 +101,79 @@ function getDefaultConfig() {
     },
     // ── Moderación ───────────────────────────────────
     moderation: {
-      dmOnAction: true,       // enviar DM al usuario al castigar
+      dmOnAction: true,
       defaultReason: 'Incumplimiento de las reglas del servidor.',
-      logActions: true,       // logear bans, kicks, warns, timeouts
-      warnExpireDays: 30,     // días para que un warn expire (0 = nunca)
+      logActions: true,
+      warnExpireDays: 30,
       maxWarnsBeforeKick: 3,
       maxWarnsBeforeBan: 5
-    }
+    },
+    // ── Despedida ────────────────────────────────────
+    leave: {
+      enabled: false,
+      type: 'embed',
+      title: '👋 Adiós',
+      message: '{user} ha salido de **{server}**. Ahora somos {count} miembros.',
+      color: '#ed4245',
+      channel: ''  // si vacío usa canal de bienvenida
+    },
+    // ── Comandos personalizados (!trigger) ───────────
+    customCommands: [],
+    // ── Reaction roles ───────────────────────────────
+    reactionRoles: [],
+    // ── Niveles / XP ─────────────────────────────────
+    levels: {
+      enabled: false,
+      xpMin: 15,
+      xpMax: 25,
+      cooldownSeconds: 60,
+      announceLevelUp: true,
+      levelUpChannel: '',
+      levelUpMessage: '🎉 {user} subió a nivel **{level}**!',
+      stackRoles: true,
+      roles: []  // [{ level: 5, roleId: '...' }, ...]
+    },
+    // ── Economía ──────────────────────────────────────
+    economy: {
+      enabled: false,
+      currency: 'monedas',
+      dailyMin: 100,
+      dailyMax: 300,
+      workMin: 50,
+      workMax: 150,
+      workCooldownMinutes: 30,
+      startBalance: 0
+    },
+    // ── Starboard ────────────────────────────────────
+    starboard: {
+      enabled: false,
+      channel: '',
+      emoji: '⭐',
+      minStars: 3,
+      selfStar: false
+    },
+    // ── Tickets (opciones extra) ─────────────────────
+    tickets: {
+      maxOpen: 3,
+      supportRoles: [],
+      welcomeMessage: 'Gracias por abrir un ticket. El staff te atenderá pronto.',
+      closeOnLeave: false
+    },
+    // ── Logs detallados ──────────────────────────────
+    logging: {
+      messageDelete: true,
+      messageEdit: true,
+      memberJoin: true,
+      memberLeave: true,
+      memberRoles: true,
+      bans: true,
+      channels: true,
+      roles: true,
+      voice: false,
+      nicknames: true
+    },
+    // ── Auto-respuestas (palabra clave → respuesta) ──
+    autoReplies: []
   };
 }
 
@@ -627,7 +694,18 @@ app.post('/api/guild/:id/config', requireAuth, async (req, res) => {
       staffRoles: req.body.staffRoles !== undefined ? req.body.staffRoles : current.staffRoles,
       autoRole: req.body.autoRole !== undefined ? req.body.autoRole : current.autoRole,
       welcome: req.body.welcome !== undefined ? { ...current.welcome, ...req.body.welcome } : current.welcome,
-      invites: req.body.invites !== undefined ? { ...current.invites, ...req.body.invites } : current.invites
+      invites: req.body.invites !== undefined ? { ...current.invites, ...req.body.invites } : current.invites,
+      leave: req.body.leave !== undefined ? { ...(current.leave || {}), ...req.body.leave } : current.leave,
+      automod: req.body.automod !== undefined ? { ...(current.automod || {}), ...req.body.automod } : current.automod,
+      moderation: req.body.moderation !== undefined ? { ...(current.moderation || {}), ...req.body.moderation } : current.moderation,
+      levels: req.body.levels !== undefined ? { ...(current.levels || {}), ...req.body.levels } : current.levels,
+      economy: req.body.economy !== undefined ? { ...(current.economy || {}), ...req.body.economy } : current.economy,
+      starboard: req.body.starboard !== undefined ? { ...(current.starboard || {}), ...req.body.starboard } : current.starboard,
+      tickets: req.body.tickets !== undefined ? { ...(current.tickets || {}), ...req.body.tickets } : current.tickets,
+      logging: req.body.logging !== undefined ? { ...(current.logging || {}), ...req.body.logging } : current.logging,
+      customCommands: req.body.customCommands !== undefined ? req.body.customCommands : current.customCommands,
+      reactionRoles: req.body.reactionRoles !== undefined ? req.body.reactionRoles : current.reactionRoles,
+      autoReplies: req.body.autoReplies !== undefined ? req.body.autoReplies : current.autoReplies
     };
     saveGuildConfig(req.params.id, updated);
 
