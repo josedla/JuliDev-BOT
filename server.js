@@ -270,6 +270,47 @@ function adminGuild(req, res, guildId) {
 }
 
 // ─── OAuth Discord ───────────────────────────────────────────
+
+// Intercambio OAuth con https nativo (fallback si fetch devuelve HTML raro)
+function exchangeCodeNative(code) {
+  return new Promise((resolve, reject) => {
+    const https = require('https');
+    const postData = new URLSearchParams({
+      client_id: String(CLIENT_ID).trim(),
+      client_secret: String(CLIENT_SECRET).trim(),
+      grant_type: 'authorization_code',
+      code: String(code).trim(),
+      redirect_uri: String(REDIRECT_URI).trim()
+    }).toString();
+
+    const req = https.request({
+      hostname: 'discord.com',
+      path: '/api/oauth2/token',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(postData),
+        'Accept': 'application/json',
+        'User-Agent': 'JuliDev-Dashboard/1.0'
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', (c) => { data += c; });
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode, data: JSON.parse(data), raw: data });
+        } catch (e) {
+          resolve({ status: res.statusCode, data: null, raw: data });
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(postData);
+    req.end();
+  });
+}
+
+
 app.get('/auth/login', (req, res) => {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -300,21 +341,49 @@ app.get('/auth/callback', async (req, res) => {
 
   try {
     console.log('[OAuth] Intercambiando code… redirect_uri=', REDIRECT_URI);
+
+    // Intercambio robusto: leer texto primero (Discord a veces devuelve HTML en errores)
+    const body = new URLSearchParams({
+      client_id: String(CLIENT_ID).trim(),
+      client_secret: String(CLIENT_SECRET).trim(),
+      grant_type: 'authorization_code',
+      code: String(code).trim(),
+      redirect_uri: String(REDIRECT_URI).trim()
+    });
+
     const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        grant_type: 'authorization_code',
-        code: String(code),
-        redirect_uri: REDIRECT_URI
-      })
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'User-Agent': 'JuliDev-Dashboard (https://julidev-bot.onrender.com)'
+      },
+      body
     });
-    const tokenData = await tokenRes.json();
+
+    const raw = await tokenRes.text();
+    let tokenData;
+    try {
+      tokenData = JSON.parse(raw);
+    } catch (parseErr) {
+      console.error('[OAuth] Respuesta no-JSON status=', tokenRes.status, 'body=', raw.slice(0, 300));
+      console.warn('[OAuth] fetch devolvió no-JSON, probando https nativo…');
+      const native = await exchangeCodeNative(code);
+      if (native.data && native.data.access_token) {
+        tokenData = native.data;
+      } else {
+        console.error('[OAuth] native también falló status=', native.status, 'body=', String(native.raw).slice(0, 300));
+        global.__lastOAuth = {
+          at: Date.now(),
+          error: 'not_json',
+          detail: { fetchStatus: tokenRes.status, fetchBody: raw.slice(0, 200), nativeStatus: native.status, nativeBody: String(native.raw).slice(0, 200) }
+        };
+        return res.redirect('/?error=not_json');
+      }
+    }
+
     if (!tokenData.access_token) {
       console.error('[OAuth] Token error:', JSON.stringify(tokenData));
-      // invalid_grant suele ser redirect_uri distinto al del portal
       const why = tokenData.error || 'token';
       global.__lastOAuth = { at: Date.now(), error: why, detail: tokenData };
       return res.redirect('/?error=' + encodeURIComponent(why));
