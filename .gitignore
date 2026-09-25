@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+.DS_Store
+data/guilds/*.json
+!data/guilds/.gitkeep
+.idea/
+.vscode/
+*.tmp
