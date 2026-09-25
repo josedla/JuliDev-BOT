@@ -196,21 +196,10 @@ function adminGuild(req, res, guildId) {
 }
 
 // ─── OAuth Discord ───────────────────────────────────────────
-// Evita procesar el mismo code dos veces (refresh / doble callback)
-const usedOAuthCodes = new Set();
-// Timestamp hasta el cual no debemos llamar a Discord por rate limit
-let discordRateLimitedUntil = 0;
-
 app.get('/auth/login', (req, res) => {
   if (!CLIENT_ID || !CLIENT_SECRET) {
-    console.error('[auth] Faltan CLIENT_ID o CLIENT_SECRET en .env');
+    console.error('[auth] Faltan CLIENT_ID o CLIENT_SECRET');
     return res.redirect('/?error=config');
-  }
-  // Si Discord nos rate-limita, no redirigir aún (evita empeorar el bloqueo)
-  if (Date.now() < discordRateLimitedUntil) {
-    const secs = Math.ceil((discordRateLimitedUntil - Date.now()) / 1000);
-    console.warn('[auth] Rate limit activo, faltan', secs, 's');
-    return res.redirect('/?error=ratelimit&wait=' + secs);
   }
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -236,26 +225,8 @@ app.get('/auth/callback', async (req, res) => {
     return res.redirect('/?error=config');
   }
 
-  // Code de un solo uso: si se reintenta (F5), no volver a llamar a Discord
-  if (usedOAuthCodes.has(code)) {
-    console.warn('[auth] Code ya usado, ignorando');
-    return res.redirect('/?error=no_code');
-  }
-  usedOAuthCodes.add(code);
-  // Limpiar codes viejos (máx ~200 en memoria)
-  if (usedOAuthCodes.size > 200) {
-    const first = usedOAuthCodes.values().next().value;
-    usedOAuthCodes.delete(first);
-  }
-
-  if (Date.now() < discordRateLimitedUntil) {
-    const secs = Math.ceil((discordRateLimitedUntil - Date.now()) / 1000);
-    return res.redirect('/?error=ratelimit&wait=' + secs);
-  }
-
   try {
     console.log('[auth] Intercambiando code por token… redirect_uri =', REDIRECT_URI);
-    console.log('[auth] CLIENT_ID length:', CLIENT_ID.length, '| CLIENT_SECRET length:', CLIENT_SECRET.length);
 
     const body = new URLSearchParams({
       client_id: CLIENT_ID,
@@ -281,21 +252,13 @@ app.get('/auth/callback', async (req, res) => {
     } catch (_) {
       console.error('[auth] Discord no devolvió JSON. status=', tokenRes.status);
       console.error('[auth] Body (primeros 300 chars):', raw.slice(0, 300));
-      if (tokenRes.status === 429) {
-        discordRateLimitedUntil = Date.now() + 60 * 1000;
-        return res.redirect('/?error=ratelimit&wait=60');
-      }
-      return res.redirect('/?error=token');
+      return res.redirect(tokenRes.status === 429 ? '/?error=ratelimit' : '/?error=token');
     }
 
     if (!tokenData.access_token) {
       console.error('[auth] Token error status=', tokenRes.status, JSON.stringify(tokenData));
-      // Rate limit de Cloudflare / Discord
-      if (tokenRes.status === 429 || tokenData.error_code === 1015 || tokenData.error === 'rate_limited') {
-        const wait = Number(tokenData.retry_after) || 60;
-        discordRateLimitedUntil = Date.now() + wait * 1000;
-        console.warn('[auth] Rate limited por Discord. Esperar', wait, 's');
-        return res.redirect('/?error=ratelimit&wait=' + wait);
+      if (tokenRes.status === 429 || tokenData.error_code === 1015) {
+        return res.redirect('/?error=ratelimit');
       }
       if (tokenData.error === 'invalid_grant') return res.redirect('/?error=redirect');
       if (tokenData.error === 'invalid_client') return res.redirect('/?error=token');

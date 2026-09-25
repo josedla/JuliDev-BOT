@@ -76,7 +76,6 @@
     const params = new URLSearchParams(location.search);
     const err = params.get('error');
     if (err) {
-      const wait = params.get('wait') || '60';
       const msgs = {
         no_code: 'No se recibió el código de Discord. Intenta de nuevo.',
         token: 'Error de token. Revisa CLIENT_ID y CLIENT_SECRET en Render (Environment).',
@@ -85,10 +84,9 @@
         config: 'Faltan CLIENT_ID o CLIENT_SECRET en Environment de Render.',
         denied: 'Cancelaste la autorización en Discord.',
         session: 'No se pudo guardar la sesión.',
-        ratelimit: 'Discord te está limitando por demasiados intentos. Espera ' + wait + ' segundos y prueba UNA sola vez. (Uso normal no tiene este problema.)'
+        ratelimit: 'Discord está limitando la IP del servidor (Render). No es tu cuenta. Prueba más tarde o desde otro host. No pulses Entrar en bucle.'
       };
       alert(msgs[err] || ('Error de autenticación: ' + err));
-      // Limpiar ?error= de la URL para no remostrar el alert al refrescar
       history.replaceState(null, '', location.pathname);
     }
   </script>
