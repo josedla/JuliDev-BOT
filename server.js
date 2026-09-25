@@ -8,10 +8,11 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const CLIENT_ID = process.env.CLIENT_ID;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI || `http://localhost:${PORT}/auth/callback`;
-const BOT_TOKEN = process.env.BOT_TOKEN;
+// trim() evita espacios/saltos de línea que a veces se cuelan en Render
+const CLIENT_ID = (process.env.CLIENT_ID || '').trim();
+const CLIENT_SECRET = (process.env.CLIENT_SECRET || '').trim();
+const REDIRECT_URI = (process.env.REDIRECT_URI || `http://localhost:${PORT}/auth/callback`).trim();
+const BOT_TOKEN = (process.env.BOT_TOKEN || '').trim();
 const INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&permissions=8&scope=bot%20applications.commands`;
 
 const GUILDS_DIR = path.join(__dirname, 'data', 'guilds');
@@ -226,23 +227,43 @@ app.get('/auth/callback', async (req, res) => {
 
   try {
     console.log('[auth] Intercambiando code por token… redirect_uri =', REDIRECT_URI);
+    console.log('[auth] CLIENT_ID length:', CLIENT_ID.length, '| CLIENT_SECRET length:', CLIENT_SECRET.length);
+
+    // Discord acepta credenciales en el body o en Authorization: Basic
+    const body = new URLSearchParams({
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: 'authorization_code',
+      code: String(code),
+      redirect_uri: REDIRECT_URI
+    }).toString();
+
     const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: REDIRECT_URI
-      })
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json'
+      },
+      body
     });
-    const tokenData = await tokenRes.json();
+
+    const raw = await tokenRes.text();
+    let tokenData;
+    try {
+      tokenData = JSON.parse(raw);
+    } catch (_) {
+      console.error('[auth] Discord no devolvió JSON. status=', tokenRes.status);
+      console.error('[auth] Body (primeros 300 chars):', raw.slice(0, 300));
+      // HTML suele indicar CLIENT_SECRET incorrecto o bloqueo
+      return res.redirect('/?error=token');
+    }
+
     if (!tokenData.access_token) {
-      console.error('[auth] Token error:', JSON.stringify(tokenData));
-      // invalid_grant suele ser REDIRECT_URI mal configurado en Discord Developer Portal
-      const reason = tokenData.error === 'invalid_grant' ? 'redirect' : 'token';
-      return res.redirect(`/?error=${reason}`);
+      console.error('[auth] Token error status=', tokenRes.status, JSON.stringify(tokenData));
+      // invalid_grant → REDIRECT_URI mal; invalid_client → CLIENT_SECRET mal
+      if (tokenData.error === 'invalid_grant') return res.redirect('/?error=redirect');
+      if (tokenData.error === 'invalid_client') return res.redirect('/?error=token');
+      return res.redirect('/?error=token');
     }
 
     const [userRes, guildsRes] = await Promise.all([
@@ -796,11 +817,13 @@ app.listen(PORT, () => {
   console.log(`\n💜 JuliDev Dashboard → http://localhost:${PORT}`);
   console.log(`   REDIRECT_URI: ${REDIRECT_URI}`);
   console.log(`   Cookie secure: ${useSecureCookie}`);
+  console.log(`   CLIENT_ID: ${CLIENT_ID ? CLIENT_ID.slice(0, 6) + '… (' + CLIENT_ID.length + ' chars)' : 'NO DEFINIDO'}`);
+  console.log(`   CLIENT_SECRET: ${CLIENT_SECRET ? '(' + CLIENT_SECRET.length + ' chars)' : 'NO DEFINIDO'}`);
   console.log(`   Invite bot: ${INVITE_URL}\n`);
-  if (!CLIENT_ID) console.warn('⚠️  Falta CLIENT_ID en .env');
-  if (!CLIENT_SECRET) console.warn('⚠️  Falta CLIENT_SECRET en .env');
-  if (!BOT_TOKEN) console.warn('⚠️  Falta BOT_TOKEN en .env');
+  if (!CLIENT_ID) console.warn('⚠️  Falta CLIENT_ID en variables de entorno de Render');
+  if (!CLIENT_SECRET) console.warn('⚠️  Falta CLIENT_SECRET en variables de entorno de Render');
+  if (!BOT_TOKEN) console.warn('⚠️  Falta BOT_TOKEN en variables de entorno de Render');
   if (!process.env.REDIRECT_URI) {
-    console.warn('⚠️  REDIRECT_URI no está en .env → usando localhost. En producción DEBES ponerlo.');
+    console.warn('⚠️  REDIRECT_URI no está definido → usando localhost. En producción DEBES ponerlo.');
   }
 });
