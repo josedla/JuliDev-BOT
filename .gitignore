@@ -10,3 +10,7 @@ data/guilds/*.json
 .idea/
 .vscode/
 *.tmp
+
+.env
+*.zip
+

@@ -342,8 +342,7 @@ app.get('/auth/callback', async (req, res) => {
   try {
     console.log('[OAuth] Intercambiando code… redirect_uri=', REDIRECT_URI);
 
-    // Intercambio robusto: leer texto primero (Discord a veces devuelve HTML en errores)
-    const body = new URLSearchParams({
+    const formBody = new URLSearchParams({
       client_id: String(CLIENT_ID).trim(),
       client_secret: String(CLIENT_SECRET).trim(),
       grant_type: 'authorization_code',
@@ -351,41 +350,62 @@ app.get('/auth/callback', async (req, res) => {
       redirect_uri: String(REDIRECT_URI).trim()
     });
 
-    const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'User-Agent': 'JuliDev-Dashboard (https://julidev-bot.onrender.com)'
-      },
-      body
-    });
+    // Reintentos ante rate-limit Cloudflare/Discord (429 / error 1015)
+    let tokenData = null;
+    let lastDetail = null;
+    const waits = [0, 35000, 70000]; // 0s, 35s, 70s
 
-    const raw = await tokenRes.text();
-    let tokenData;
-    try {
-      tokenData = JSON.parse(raw);
-    } catch (parseErr) {
-      console.error('[OAuth] Respuesta no-JSON status=', tokenRes.status, 'body=', raw.slice(0, 300));
-      console.warn('[OAuth] fetch devolvió no-JSON, probando https nativo…');
-      const native = await exchangeCodeNative(code);
-      if (native.data && native.data.access_token) {
-        tokenData = native.data;
-      } else {
-        console.error('[OAuth] native también falló status=', native.status, 'body=', String(native.raw).slice(0, 300));
-        global.__lastOAuth = {
-          at: Date.now(),
-          error: 'not_json',
-          detail: { fetchStatus: tokenRes.status, fetchBody: raw.slice(0, 200), nativeStatus: native.status, nativeBody: String(native.raw).slice(0, 200) }
-        };
-        return res.redirect('/?error=not_json');
+    for (let attempt = 0; attempt < waits.length; attempt++) {
+      if (waits[attempt] > 0) {
+        console.log('[OAuth] Rate-limit: esperando', waits[attempt] / 1000, 's (intento', attempt + 1, ')…');
+        await new Promise(r => setTimeout(r, waits[attempt]));
       }
+
+      const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'User-Agent': 'JuliDev-Dashboard/1.0'
+        },
+        body: formBody
+      });
+
+      const raw = await tokenRes.text();
+      let parsed = null;
+      try { parsed = JSON.parse(raw); } catch (_) {}
+
+      if (parsed && parsed.access_token) {
+        tokenData = parsed;
+        break;
+      }
+
+      const is429 = tokenRes.status === 429
+        || (parsed && (parsed.status === 429 || parsed.error_code === 1015 || parsed.error_name === 'rate_limited'));
+      lastDetail = parsed || { status: tokenRes.status, body: raw.slice(0, 300) };
+
+      if (is429 && attempt < waits.length - 1) {
+        console.warn('[OAuth] 429/1015 rate-limited, reintento…');
+        continue;
+      }
+
+      if (!parsed) {
+        console.warn('[OAuth] no-JSON, https nativo…');
+        const native = await exchangeCodeNative(code);
+        if (native.data && native.data.access_token) {
+          tokenData = native.data;
+          break;
+        }
+        lastDetail = { fetch: lastDetail, nativeStatus: native.status, nativeBody: String(native.raw).slice(0, 200) };
+      }
+      break;
     }
 
-    if (!tokenData.access_token) {
-      console.error('[OAuth] Token error:', JSON.stringify(tokenData));
-      const why = tokenData.error || 'token';
-      global.__lastOAuth = { at: Date.now(), error: why, detail: tokenData };
+    if (!tokenData || !tokenData.access_token) {
+      console.error('[OAuth] Token error final:', JSON.stringify(lastDetail));
+      const isRate = lastDetail && (lastDetail.status === 429 || lastDetail.error_code === 1015 || lastDetail.error_name === 'rate_limited');
+      const why = isRate ? 'rate_limited' : ((lastDetail && lastDetail.error) || 'token');
+      global.__lastOAuth = { at: Date.now(), error: why, detail: lastDetail };
       return res.redirect('/?error=' + encodeURIComponent(why));
     }
 
