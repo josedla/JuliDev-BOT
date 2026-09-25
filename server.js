@@ -37,8 +37,7 @@ function getDefaultConfig() {
       sorteos: '', chat: '', comandos: '', sugerencias: '',
       ticketsCategory: '', soportePublico: '', baneados: '',
       logs: '', logTickets: '', staffChat: '',
-      streaming: '', eventos: '', boosteos: '', multimedia: '', memes: '',
-      despedida: '', starboard: '', levelup: '', economia: ''
+      streaming: '', eventos: '', boosteos: '', multimedia: '', memes: ''
     },
     staffRoles: [],
     autoRole: { enabled: false, roleId: '' },
@@ -101,79 +100,13 @@ function getDefaultConfig() {
     },
     // ── Moderación ───────────────────────────────────
     moderation: {
-      dmOnAction: true,
+      dmOnAction: true,       // enviar DM al usuario al castigar
       defaultReason: 'Incumplimiento de las reglas del servidor.',
-      logActions: true,
-      warnExpireDays: 30,
+      logActions: true,       // logear bans, kicks, warns, timeouts
+      warnExpireDays: 30,     // días para que un warn expire (0 = nunca)
       maxWarnsBeforeKick: 3,
       maxWarnsBeforeBan: 5
-    },
-    // ── Despedida ────────────────────────────────────
-    leave: {
-      enabled: false,
-      type: 'embed',
-      title: '👋 Adiós',
-      message: '{user} ha salido de **{server}**. Ahora somos {count} miembros.',
-      color: '#ed4245',
-      channel: ''  // si vacío usa canal de bienvenida
-    },
-    // ── Comandos personalizados (!trigger) ───────────
-    customCommands: [],
-    // ── Reaction roles ───────────────────────────────
-    reactionRoles: [],
-    // ── Niveles / XP ─────────────────────────────────
-    levels: {
-      enabled: false,
-      xpMin: 15,
-      xpMax: 25,
-      cooldownSeconds: 60,
-      announceLevelUp: true,
-      levelUpChannel: '',
-      levelUpMessage: '🎉 {user} subió a nivel **{level}**!',
-      stackRoles: true,
-      roles: []  // [{ level: 5, roleId: '...' }, ...]
-    },
-    // ── Economía ──────────────────────────────────────
-    economy: {
-      enabled: false,
-      currency: 'monedas',
-      dailyMin: 100,
-      dailyMax: 300,
-      workMin: 50,
-      workMax: 150,
-      workCooldownMinutes: 30,
-      startBalance: 0
-    },
-    // ── Starboard ────────────────────────────────────
-    starboard: {
-      enabled: false,
-      channel: '',
-      emoji: '⭐',
-      minStars: 3,
-      selfStar: false
-    },
-    // ── Tickets (opciones extra) ─────────────────────
-    tickets: {
-      maxOpen: 3,
-      supportRoles: [],
-      welcomeMessage: 'Gracias por abrir un ticket. El staff te atenderá pronto.',
-      closeOnLeave: false
-    },
-    // ── Logs detallados ──────────────────────────────
-    logging: {
-      messageDelete: true,
-      messageEdit: true,
-      memberJoin: true,
-      memberLeave: true,
-      memberRoles: true,
-      bans: true,
-      channels: true,
-      roles: true,
-      voice: false,
-      nicknames: true
-    },
-    // ── Auto-respuestas (palabra clave → respuesta) ──
-    autoReplies: []
+    }
   };
 }
 
@@ -195,17 +128,26 @@ function saveGuildConfig(guildId, cfg) {
 }
 
 // ─── Middleware ──────────────────────────────────────────────
+// Necesario si el panel está detrás de un proxy (Render, Railway, Nginx, Cloudflare…)
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const isProd = process.env.NODE_ENV === 'production' || !!process.env.RENDER || !!process.env.RAILWAY_ENVIRONMENT;
+const useSecureCookie = process.env.COOKIE_SECURE === 'true' || (isProd && (process.env.REDIRECT_URI || '').startsWith('https'));
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'julidev-panel-secret',
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',
-    secure: false // true solo si usas HTTPS
+    // En HTTPS (producción) la cookie DEBE ser secure, si no el navegador no la guarda
+    secure: useSecureCookie
   }
 }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -254,20 +196,36 @@ function adminGuild(req, res, guildId) {
 
 // ─── OAuth Discord ───────────────────────────────────────────
 app.get('/auth/login', (req, res) => {
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.error('[auth] Faltan CLIENT_ID o CLIENT_SECRET en .env');
+    return res.redirect('/?error=config');
+  }
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: 'code',
     scope: 'identify guilds'
   });
+  console.log('[auth] Login → redirect_uri =', REDIRECT_URI);
   res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
 });
 
 app.get('/auth/callback', async (req, res) => {
   const code = req.query.code;
+  const oauthError = req.query.error;
+  if (oauthError) {
+    console.error('[auth] Discord OAuth error:', oauthError, req.query.error_description);
+    return res.redirect('/?error=denied');
+  }
   if (!code) return res.redirect('/?error=no_code');
 
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.error('[auth] Faltan CLIENT_ID o CLIENT_SECRET');
+    return res.redirect('/?error=config');
+  }
+
   try {
+    console.log('[auth] Intercambiando code por token… redirect_uri =', REDIRECT_URI);
     const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -281,8 +239,10 @@ app.get('/auth/callback', async (req, res) => {
     });
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      console.error('Token error:', tokenData);
-      return res.redirect('/?error=token');
+      console.error('[auth] Token error:', JSON.stringify(tokenData));
+      // invalid_grant suele ser REDIRECT_URI mal configurado en Discord Developer Portal
+      const reason = tokenData.error === 'invalid_grant' ? 'redirect' : 'token';
+      return res.redirect(`/?error=${reason}`);
     }
 
     const [userRes, guildsRes] = await Promise.all([
@@ -297,6 +257,11 @@ app.get('/auth/callback', async (req, res) => {
     const user = await userRes.json();
     const guilds = await guildsRes.json();
 
+    if (!user || !user.id) {
+      console.error('[auth] No se pudo obtener el usuario:', user);
+      return res.redirect('/?error=oauth');
+    }
+
     req.session.user = {
       id: user.id,
       username: user.username,
@@ -308,11 +273,15 @@ app.get('/auth/callback', async (req, res) => {
 
     // Asegurar que la sesión se guarda antes del redirect
     req.session.save(err => {
-      if (err) console.error('Session save error:', err);
+      if (err) {
+        console.error('[auth] Session save error:', err);
+        return res.redirect('/?error=session');
+      }
+      console.log('[auth] OK →', user.username, '(' + user.id + ')');
       res.redirect('/servers');
     });
   } catch (e) {
-    console.error('OAuth:', e);
+    console.error('[auth] OAuth exception:', e);
     res.redirect('/?error=oauth');
   }
 });
@@ -694,18 +663,7 @@ app.post('/api/guild/:id/config', requireAuth, async (req, res) => {
       staffRoles: req.body.staffRoles !== undefined ? req.body.staffRoles : current.staffRoles,
       autoRole: req.body.autoRole !== undefined ? req.body.autoRole : current.autoRole,
       welcome: req.body.welcome !== undefined ? { ...current.welcome, ...req.body.welcome } : current.welcome,
-      invites: req.body.invites !== undefined ? { ...current.invites, ...req.body.invites } : current.invites,
-      leave: req.body.leave !== undefined ? { ...(current.leave || {}), ...req.body.leave } : current.leave,
-      automod: req.body.automod !== undefined ? { ...(current.automod || {}), ...req.body.automod } : current.automod,
-      moderation: req.body.moderation !== undefined ? { ...(current.moderation || {}), ...req.body.moderation } : current.moderation,
-      levels: req.body.levels !== undefined ? { ...(current.levels || {}), ...req.body.levels } : current.levels,
-      economy: req.body.economy !== undefined ? { ...(current.economy || {}), ...req.body.economy } : current.economy,
-      starboard: req.body.starboard !== undefined ? { ...(current.starboard || {}), ...req.body.starboard } : current.starboard,
-      tickets: req.body.tickets !== undefined ? { ...(current.tickets || {}), ...req.body.tickets } : current.tickets,
-      logging: req.body.logging !== undefined ? { ...(current.logging || {}), ...req.body.logging } : current.logging,
-      customCommands: req.body.customCommands !== undefined ? req.body.customCommands : current.customCommands,
-      reactionRoles: req.body.reactionRoles !== undefined ? req.body.reactionRoles : current.reactionRoles,
-      autoReplies: req.body.autoReplies !== undefined ? req.body.autoReplies : current.autoReplies
+      invites: req.body.invites !== undefined ? { ...current.invites, ...req.body.invites } : current.invites
     };
     saveGuildConfig(req.params.id, updated);
 
@@ -819,41 +777,6 @@ app.post('/api/guild/:id/send', requireAuth, async (req, res) => {
   }
 });
 
-
-app.get('/api/invite', (req, res) => {
-  res.json({ url: INVITE_URL, clientId: CLIENT_ID });
-});
-
-app.get('/api/guild/:id/stats', requireAuth, async (req, res) => {
-  if (!adminGuild(req, res, req.params.id)) return;
-  const guildId = req.params.id;
-  try {
-    const g = await discordApi(`/guilds/${guildId}?with_counts=true`);
-    const channels = await discordApi(`/guilds/${guildId}/channels`).catch(() => []);
-    const roles = await discordApi(`/guilds/${guildId}/roles`).catch(() => []);
-    const cfg = loadGuildConfig(guildId);
-    res.json({
-      name: g.name,
-      memberCount: g.approximate_member_count || g.member_count || 0,
-      channels: Array.isArray(channels) ? channels.length : 0,
-      roles: Array.isArray(roles) ? roles.length : 0,
-      features: {
-        welcome: !!(cfg.welcome?.enabled),
-        leave: !!(cfg.leave?.enabled),
-        automod: !!(cfg.automod?.enabled),
-        levels: !!(cfg.levels?.enabled),
-        economy: !!(cfg.economy?.enabled),
-        starboard: !!(cfg.starboard?.enabled),
-        customCommands: (cfg.customCommands || []).length,
-        reactionRoles: (cfg.reactionRoles || []).length,
-        autoReplies: (cfg.autoReplies || []).length
-      }
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // ─── Páginas ─────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -871,7 +794,13 @@ app.get('/panel/:guildId', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n💜 JuliDev Dashboard → http://localhost:${PORT}`);
+  console.log(`   REDIRECT_URI: ${REDIRECT_URI}`);
+  console.log(`   Cookie secure: ${useSecureCookie}`);
   console.log(`   Invite bot: ${INVITE_URL}\n`);
+  if (!CLIENT_ID) console.warn('⚠️  Falta CLIENT_ID en .env');
   if (!CLIENT_SECRET) console.warn('⚠️  Falta CLIENT_SECRET en .env');
   if (!BOT_TOKEN) console.warn('⚠️  Falta BOT_TOKEN en .env');
+  if (!process.env.REDIRECT_URI) {
+    console.warn('⚠️  REDIRECT_URI no está en .env → usando localhost. En producción DEBES ponerlo.');
+  }
 });

@@ -1,11 +1,10 @@
 {
   "name": "julidev-dashboard",
-  "version": "4.0.0",
-  "description": "Panel multi-servidor JuliDev v4 (niveles, econom\u00eda, starboard, etc.)",
+  "version": "2.0.0",
+  "description": "Panel multi-servidor estilo Koya/MEE6 para JuliDev",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.21.0",
