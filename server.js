@@ -197,15 +197,22 @@ function saveGuildConfig(guildId, cfg) {
 // ─── Middleware ──────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Detrás de Render/Railway/Nginx hace falta confiar en el proxy para cookies seguras
+app.set('trust proxy', 1);
+
+const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' || !!process.env.RAILWAY_ENVIRONMENT;
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'julidev-panel-secret',
+  secret: process.env.SESSION_SECRET || 'julidev-panel-secret-cambia-esto',
   resave: false,
   saveUninitialized: false,
+  name: 'julidev.sid',
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',
-    secure: false // true solo si usas HTTPS
+    // En HTTPS (Render) debe ser true; en localhost false
+    secure: isProd || (process.env.COOKIE_SECURE === 'true')
   }
 }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -265,9 +272,20 @@ app.get('/auth/login', (req, res) => {
 
 app.get('/auth/callback', async (req, res) => {
   const code = req.query.code;
+  const oauthErr = req.query.error;
+  if (oauthErr) {
+    console.error('[OAuth] Discord denied:', oauthErr, req.query.error_description);
+    return res.redirect('/?error=denied');
+  }
   if (!code) return res.redirect('/?error=no_code');
 
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.error('[OAuth] Falta CLIENT_ID o CLIENT_SECRET en .env');
+    return res.redirect('/?error=config');
+  }
+
   try {
+    console.log('[OAuth] Intercambiando code… redirect_uri=', REDIRECT_URI);
     const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -275,14 +293,16 @@ app.get('/auth/callback', async (req, res) => {
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
         grant_type: 'authorization_code',
-        code,
+        code: String(code),
         redirect_uri: REDIRECT_URI
       })
     });
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      console.error('Token error:', tokenData);
-      return res.redirect('/?error=token');
+      console.error('[OAuth] Token error:', JSON.stringify(tokenData));
+      // invalid_grant suele ser redirect_uri distinto al del portal
+      const why = tokenData.error || 'token';
+      return res.redirect('/?error=' + encodeURIComponent(why));
     }
 
     const [userRes, guildsRes] = await Promise.all([
@@ -297,6 +317,11 @@ app.get('/auth/callback', async (req, res) => {
     const user = await userRes.json();
     const guilds = await guildsRes.json();
 
+    if (!user || !user.id) {
+      console.error('[OAuth] User fetch failed:', user);
+      return res.redirect('/?error=user');
+    }
+
     req.session.user = {
       id: user.id,
       username: user.username,
@@ -306,13 +331,16 @@ app.get('/auth/callback', async (req, res) => {
     req.session.accessToken = tokenData.access_token;
     req.session.userGuilds = Array.isArray(guilds) ? guilds : [];
 
-    // Asegurar que la sesión se guarda antes del redirect
     req.session.save(err => {
-      if (err) console.error('Session save error:', err);
+      if (err) {
+        console.error('[OAuth] Session save error:', err);
+        return res.redirect('/?error=session');
+      }
+      console.log('[OAuth] OK user=', user.username, 'guilds=', req.session.userGuilds.length);
       res.redirect('/servers');
     });
   } catch (e) {
-    console.error('OAuth:', e);
+    console.error('[OAuth] Exception:', e);
     res.redirect('/?error=oauth');
   }
 });
@@ -860,8 +888,24 @@ app.get('/', (req, res) => {
 });
 
 app.get('/servers', (req, res) => {
-  if (!req.session.user) return res.redirect('/auth/login');
+  if (!req.session.user) {
+    console.warn('[servers] Sin sesión → reenviando a login');
+    return res.redirect('/auth/login');
+  }
   res.sendFile(path.join(__dirname, 'public', 'servers.html'));
+});
+
+// Debug rápido (quítalo en prod si quieres)
+app.get('/api/debug/session', (req, res) => {
+  res.json({
+    hasUser: !!req.session?.user,
+    user: req.session?.user || null,
+    guilds: (req.session?.userGuilds || []).length,
+    redirectUri: REDIRECT_URI,
+    hasClientId: !!CLIENT_ID,
+    hasSecret: !!CLIENT_SECRET,
+    hasBotToken: !!BOT_TOKEN
+  });
 });
 
 app.get('/panel/:guildId', (req, res) => {

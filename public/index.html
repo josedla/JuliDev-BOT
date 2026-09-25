@@ -17,6 +17,7 @@
     </div>
   </nav>
 
+  <div id="oauth-error" style="display:none;max-width:640px;margin:1rem auto;padding:1rem 1.2rem;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.4);border-radius:12px;color:#fecaca;text-align:center;font-size:.95rem"></div>
   <header class="hero">
     <div class="hero-badge">✨ Panel all-in-one · 100 comandos · GIFs · +500 frases</div>
     <h1>Configura tu servidor<br /><span class="grad">con estilo Koya</span></h1>
@@ -93,5 +94,30 @@
       if (d.url) document.getElementById('invite-btn').href = d.url;
     }).catch(() => {});
   </script>
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const err = params.get('error');
+      if (!err) return;
+      const map = {
+        token: 'Error al obtener el token de Discord. Revisa CLIENT_SECRET y que REDIRECT_URI sea idéntico en el Portal y en el .env.',
+        invalid_grant: 'Código inválido o REDIRECT_URI no coincide con Discord Developer Portal.',
+        invalid_client: 'CLIENT_ID o CLIENT_SECRET incorrectos.',
+        config: 'Falta CLIENT_ID o CLIENT_SECRET en el .env del panel.',
+        session: 'No se pudo guardar la sesión (cookies). Si usas HTTPS, pon COOKIE_SECURE=true.',
+        denied: 'Cancelaste la autorización en Discord.',
+        no_code: 'Discord no devolvió código. Vuelve a intentar Entrar.',
+        oauth: 'Error OAuth genérico. Mira los logs del servidor.',
+        user: 'No se pudo leer tu usuario de Discord.'
+      };
+      const el = document.getElementById('oauth-error');
+      if (!el) return;
+      el.style.display = 'block';
+      el.innerHTML = '⚠️ <strong>Login fallido:</strong> ' + (map[err] || err) +
+        '<br><small style="opacity:.8">También puedes abrir <code>/api/debug/session</code> para ver el estado.</small>';
+    })();
+  </script>
+
 </body>
 </html>
