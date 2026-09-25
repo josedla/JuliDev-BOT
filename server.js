@@ -201,18 +201,28 @@ app.use(express.urlencoded({ extended: true }));
 // Detrás de Render/Railway/Nginx hace falta confiar en el proxy para cookies seguras
 app.set('trust proxy', 1);
 
-const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' || !!process.env.RAILWAY_ENVIRONMENT;
+// Cookie segura si el panel va por HTTPS (Render) o si lo fuerzas en env
+const redirectIsHttps = String(REDIRECT_URI || '').startsWith('https://');
+const cookieSecure = process.env.COOKIE_SECURE === 'true'
+  || process.env.COOKIE_SECURE === '1'
+  || redirectIsHttps
+  || process.env.NODE_ENV === 'production'
+  || process.env.RENDER === 'true';
+
+console.log('[session] REDIRECT_URI=', REDIRECT_URI, '| cookie.secure=', cookieSecure);
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'julidev-panel-secret-cambia-esto',
-  resave: false,
-  saveUninitialized: false,
+  resave: true,
+  saveUninitialized: true,
   name: 'julidev.sid',
+  proxy: true,
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',
-    // En HTTPS (Render) debe ser true; en localhost false
-    secure: isProd || (process.env.COOKIE_SECURE === 'true')
+    secure: cookieSecure,
+    path: '/'
   }
 }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -270,17 +280,21 @@ app.get('/auth/login', (req, res) => {
   res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
 });
 
+global.__lastOAuth = global.__lastOAuth || { at: null, error: null, detail: null };
+
 app.get('/auth/callback', async (req, res) => {
   const code = req.query.code;
   const oauthErr = req.query.error;
   if (oauthErr) {
     console.error('[OAuth] Discord denied:', oauthErr, req.query.error_description);
+    global.__lastOAuth = { at: Date.now(), error: 'denied', detail: req.query.error_description };
     return res.redirect('/?error=denied');
   }
   if (!code) return res.redirect('/?error=no_code');
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
     console.error('[OAuth] Falta CLIENT_ID o CLIENT_SECRET en .env');
+    global.__lastOAuth = { at: Date.now(), error: 'config', detail: 'missing CLIENT_ID/SECRET' };
     return res.redirect('/?error=config');
   }
 
@@ -302,6 +316,7 @@ app.get('/auth/callback', async (req, res) => {
       console.error('[OAuth] Token error:', JSON.stringify(tokenData));
       // invalid_grant suele ser redirect_uri distinto al del portal
       const why = tokenData.error || 'token';
+      global.__lastOAuth = { at: Date.now(), error: why, detail: tokenData };
       return res.redirect('/?error=' + encodeURIComponent(why));
     }
 
@@ -334,13 +349,16 @@ app.get('/auth/callback', async (req, res) => {
     req.session.save(err => {
       if (err) {
         console.error('[OAuth] Session save error:', err);
+        global.__lastOAuth = { at: Date.now(), error: 'session', detail: String(err) };
         return res.redirect('/?error=session');
       }
+      global.__lastOAuth = { at: Date.now(), error: null, detail: 'ok:' + user.username };
       console.log('[OAuth] OK user=', user.username, 'guilds=', req.session.userGuilds.length);
       res.redirect('/servers');
     });
   } catch (e) {
     console.error('[OAuth] Exception:', e);
+    global.__lastOAuth = { at: Date.now(), error: 'oauth', detail: String(e) };
     res.redirect('/?error=oauth');
   }
 });
@@ -897,6 +915,7 @@ app.get('/servers', (req, res) => {
 
 // Debug rápido (quítalo en prod si quieres)
 app.get('/api/debug/session', (req, res) => {
+  const redirectIsHttps = String(REDIRECT_URI || '').startsWith('https://');
   res.json({
     hasUser: !!req.session?.user,
     user: req.session?.user || null,
@@ -904,7 +923,10 @@ app.get('/api/debug/session', (req, res) => {
     redirectUri: REDIRECT_URI,
     hasClientId: !!CLIENT_ID,
     hasSecret: !!CLIENT_SECRET,
-    hasBotToken: !!BOT_TOKEN
+    hasBotToken: !!BOT_TOKEN,
+    cookieSecureExpected: redirectIsHttps || process.env.COOKIE_SECURE === 'true',
+    sessionID: req.sessionID || null,
+    lastOAuth: global.__lastOAuth || null
   });
 });
 
