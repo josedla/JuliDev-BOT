@@ -73,21 +73,14 @@
       document.getElementById('invite-btn').href = 'https://discord.com/oauth2/authorize?client_id=1421165831181570149&permissions=8&scope=bot%20applications.commands';
     });
 
-    const params = new URLSearchParams(location.search);
-    const err = params.get('error');
+    const err = new URLSearchParams(location.search).get('error');
     if (err) {
       const msgs = {
-        no_code: 'No se recibió el código de Discord. Intenta de nuevo.',
-        token: 'Error de token. Revisa CLIENT_ID y CLIENT_SECRET en Render (Environment).',
-        redirect: 'REDIRECT_URI incorrecto. Debe coincidir EXACTO con el de Discord Developer Portal.',
-        oauth: 'Error al iniciar sesión con Discord.',
-        config: 'Faltan CLIENT_ID o CLIENT_SECRET en Environment de Render.',
-        denied: 'Cancelaste la autorización en Discord.',
-        session: 'No se pudo guardar la sesión.',
-        ratelimit: 'Discord está limitando la IP del servidor (Render). No es tu cuenta. Prueba más tarde o desde otro host. No pulses Entrar en bucle.'
+        no_code: 'No se recibió autorización.',
+        token: 'Error de token. Revisa CLIENT_SECRET.',
+        oauth: 'Error al iniciar sesión con Discord.'
       };
-      alert(msgs[err] || ('Error de autenticación: ' + err));
-      history.replaceState(null, '', location.pathname);
+      alert(msgs[err] || 'Error de autenticación');
     }
   </script>
 </body>

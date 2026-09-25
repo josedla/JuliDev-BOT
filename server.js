@@ -8,11 +8,10 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// trim() evita espacios/saltos de línea que a veces se cuelan en Render
-const CLIENT_ID = (process.env.CLIENT_ID || '').trim();
-const CLIENT_SECRET = (process.env.CLIENT_SECRET || '').trim();
-const REDIRECT_URI = (process.env.REDIRECT_URI || `http://localhost:${PORT}/auth/callback`).trim();
-const BOT_TOKEN = (process.env.BOT_TOKEN || '').trim();
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URI = process.env.REDIRECT_URI || `http://localhost:${PORT}/auth/callback`;
+const BOT_TOKEN = process.env.BOT_TOKEN;
 const INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&permissions=8&scope=bot%20applications.commands`;
 
 const GUILDS_DIR = path.join(__dirname, 'data', 'guilds');
@@ -129,26 +128,17 @@ function saveGuildConfig(guildId, cfg) {
 }
 
 // ─── Middleware ──────────────────────────────────────────────
-// Necesario si el panel está detrás de un proxy (Render, Railway, Nginx, Cloudflare…)
-app.set('trust proxy', 1);
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-const isProd = process.env.NODE_ENV === 'production' || !!process.env.RENDER || !!process.env.RAILWAY_ENVIRONMENT;
-const useSecureCookie = process.env.COOKIE_SECURE === 'true' || (isProd && (process.env.REDIRECT_URI || '').startsWith('https'));
-
 app.use(session({
   secret: process.env.SESSION_SECRET || 'julidev-panel-secret',
   resave: false,
   saveUninitialized: false,
-  proxy: true,
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',
-    // En HTTPS (producción) la cookie DEBE ser secure, si no el navegador no la guarda
-    secure: useSecureCookie
+    secure: false // true solo si usas HTTPS
   }
 }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -197,71 +187,34 @@ function adminGuild(req, res, guildId) {
 
 // ─── OAuth Discord ───────────────────────────────────────────
 app.get('/auth/login', (req, res) => {
-  if (!CLIENT_ID || !CLIENT_SECRET) {
-    console.error('[auth] Faltan CLIENT_ID o CLIENT_SECRET');
-    return res.redirect('/?error=config');
-  }
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: 'code',
     scope: 'identify guilds'
   });
-  console.log('[auth] Login → redirect_uri =', REDIRECT_URI);
   res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
 });
 
 app.get('/auth/callback', async (req, res) => {
   const code = req.query.code;
-  const oauthError = req.query.error;
-  if (oauthError) {
-    console.error('[auth] Discord OAuth error:', oauthError, req.query.error_description);
-    return res.redirect('/?error=denied');
-  }
   if (!code) return res.redirect('/?error=no_code');
 
-  if (!CLIENT_ID || !CLIENT_SECRET) {
-    console.error('[auth] Faltan CLIENT_ID o CLIENT_SECRET');
-    return res.redirect('/?error=config');
-  }
-
   try {
-    console.log('[auth] Intercambiando code por token… redirect_uri =', REDIRECT_URI);
-
-    const body = new URLSearchParams({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      grant_type: 'authorization_code',
-      code: String(code),
-      redirect_uri: REDIRECT_URI
-    }).toString();
-
     const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json'
-      },
-      body
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: REDIRECT_URI
+      })
     });
-
-    const raw = await tokenRes.text();
-    let tokenData;
-    try {
-      tokenData = JSON.parse(raw);
-    } catch (_) {
-      console.error('[auth] Discord no devolvió JSON. status=', tokenRes.status);
-      console.error('[auth] Body (primeros 300 chars):', raw.slice(0, 300));
-      return res.redirect(tokenRes.status === 429 ? '/?error=ratelimit' : '/?error=token');
-    }
-
+    const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      console.error('[auth] Token error status=', tokenRes.status, JSON.stringify(tokenData));
-      if (tokenRes.status === 429 || tokenData.error_code === 1015) {
-        return res.redirect('/?error=ratelimit');
-      }
-      if (tokenData.error === 'invalid_grant') return res.redirect('/?error=redirect');
-      if (tokenData.error === 'invalid_client') return res.redirect('/?error=token');
+      console.error('Token error:', tokenData);
       return res.redirect('/?error=token');
     }
 
@@ -277,11 +230,6 @@ app.get('/auth/callback', async (req, res) => {
     const user = await userRes.json();
     const guilds = await guildsRes.json();
 
-    if (!user || !user.id) {
-      console.error('[auth] No se pudo obtener el usuario:', user);
-      return res.redirect('/?error=oauth');
-    }
-
     req.session.user = {
       id: user.id,
       username: user.username,
@@ -293,15 +241,11 @@ app.get('/auth/callback', async (req, res) => {
 
     // Asegurar que la sesión se guarda antes del redirect
     req.session.save(err => {
-      if (err) {
-        console.error('[auth] Session save error:', err);
-        return res.redirect('/?error=session');
-      }
-      console.log('[auth] OK →', user.username, '(' + user.id + ')');
+      if (err) console.error('Session save error:', err);
       res.redirect('/servers');
     });
   } catch (e) {
-    console.error('[auth] OAuth exception:', e);
+    console.error('OAuth:', e);
     res.redirect('/?error=oauth');
   }
 });
@@ -814,15 +758,7 @@ app.get('/panel/:guildId', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n💜 JuliDev Dashboard → http://localhost:${PORT}`);
-  console.log(`   REDIRECT_URI: ${REDIRECT_URI}`);
-  console.log(`   Cookie secure: ${useSecureCookie}`);
-  console.log(`   CLIENT_ID: ${CLIENT_ID ? CLIENT_ID.slice(0, 6) + '… (' + CLIENT_ID.length + ' chars)' : 'NO DEFINIDO'}`);
-  console.log(`   CLIENT_SECRET: ${CLIENT_SECRET ? '(' + CLIENT_SECRET.length + ' chars)' : 'NO DEFINIDO'}`);
   console.log(`   Invite bot: ${INVITE_URL}\n`);
-  if (!CLIENT_ID) console.warn('⚠️  Falta CLIENT_ID en variables de entorno de Render');
-  if (!CLIENT_SECRET) console.warn('⚠️  Falta CLIENT_SECRET en variables de entorno de Render');
-  if (!BOT_TOKEN) console.warn('⚠️  Falta BOT_TOKEN en variables de entorno de Render');
-  if (!process.env.REDIRECT_URI) {
-    console.warn('⚠️  REDIRECT_URI no está definido → usando localhost. En producción DEBES ponerlo.');
-  }
+  if (!CLIENT_SECRET) console.warn('⚠️  Falta CLIENT_SECRET en .env');
+  if (!BOT_TOKEN) console.warn('⚠️  Falta BOT_TOKEN en .env');
 });
